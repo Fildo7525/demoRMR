@@ -26,7 +26,7 @@
 #include "opencv2/imgcodecs.hpp"
 #include "robot.h"
 
-#include <QJoysticks.h>
+
 namespace Ui {
 class MainWindow;
 }
@@ -82,10 +82,7 @@ private:
      int datacounter;
      QTimer *timer;
 
-     QJoysticks *instance;
 
-     double forwardspeed;//mm/s
-     double rotationspeed;//omega/s
 public slots:
      void setUiValues(double robotX,double robotY,double robotFi);
 signals:
