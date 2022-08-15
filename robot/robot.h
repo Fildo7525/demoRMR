@@ -1,7 +1,7 @@
 #ifndef ROBOT_H
 #define ROBOT_H
 
-#define useCamera
+//#define useCamera
 
 #ifdef useCamera
 #include <opencv2/core/core.hpp>
@@ -62,7 +62,7 @@ public:
 
     void setRotationSpeed(double radpersec);
     void setArcSpeed(int mmpersec,int radius);
-
+#ifdef useCamera
     void setCameraParameters(std::string link,std::function<int(cv::Mat)> callback )
     {
 
@@ -78,7 +78,9 @@ private:
     std::shared_future<void> readyFuture;
     int wasLaserSet;
     int wasRobotSet;
+    #ifdef useCamera
     int wasCameraSet;
+#endif
     //veci na laser
     LaserMeasurement copyOfLaserData;
     void laserprocess();
@@ -100,7 +102,7 @@ private:
 
 
     //veci pre kameru -- pozor na kameru, neotvarat ak nahodou chcete kameru pripojit na detekciu kostry...
-
+#ifdef useCamera
     std::string camera_link;
     std::thread camerathreadhandle;
     std::function<int(cv::Mat)> camera_callback=nullptr;
