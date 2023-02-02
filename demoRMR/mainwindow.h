@@ -15,6 +15,8 @@
 #include<string.h>
 #include<stdlib.h>
 #include<vector>
+//#include "ckobuki.h"
+//#include "rplidar.h"
 
 #include "robot.h"
 
@@ -75,6 +77,9 @@ private:
      QTimer *timer;
 
 
+
+     double forwardspeed;//mm/s
+     double rotationspeed;//omega/s
 public slots:
      void setUiValues(double robotX,double robotY,double robotFi);
 signals:

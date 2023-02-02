@@ -78,9 +78,7 @@ private:
     std::shared_future<void> readyFuture;
     int wasLaserSet;
     int wasRobotSet;
-    #ifdef useCamera
     int wasCameraSet;
-#endif
     //veci na laser
     LaserMeasurement copyOfLaserData;
     void laserprocess();

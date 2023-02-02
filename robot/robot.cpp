@@ -29,11 +29,8 @@ Robot::~Robot()
 WSACleanup();
 #endif
 }
-#ifdef useCamera
+
 Robot::Robot(std::string ipaddressLaser,int laserportRobot, int laserportMe,std::function<int(LaserMeasurement)> &lascallback,std::string ipaddressRobot,int robotportRobot, int robotportMe,std::function<int(TKobukiData)> &robcallback): wasLaserSet(0),wasRobotSet(0),wasCameraSet(0)
-  #else
-Robot::Robot(std::string ipaddressLaser,int laserportRobot, int laserportMe,std::function<int(LaserMeasurement)> &lascallback,std::string ipaddressRobot,int robotportRobot, int robotportMe,std::function<int(TKobukiData)> &robcallback): wasLaserSet(0),wasRobotSet(0)
-  #endif
 {
 
     setLaserParameters(ipaddressLaser,laserportRobot,laserportMe,lascallback);
