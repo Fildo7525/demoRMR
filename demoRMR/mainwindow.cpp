@@ -23,8 +23,6 @@ MainWindow::MainWindow(QWidget *parent) :
     datacounter=0;
   //  timer = new QTimer(this);
 //    connect(timer, SIGNAL(timeout()), this, SLOT(getNewFrame()));
-    actIndex=-1;
-    useCamera1=false;
 
 
 
@@ -54,7 +52,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
     rect.translate(0,15);
     painter.drawRect(rect);
 
-    if(useCamera1==true && actIndex>-1)/// ak zobrazujem data z kamery a aspon niektory frame vo vectore je naplneny
+    if(updateLaserPicture==1) ///ak mam nove data z lidaru
     {
         std::cout<<actIndex<<std::endl;
         QImage image = QImage((uchar*)frame[actIndex].data, frame[actIndex].cols, frame[actIndex].rows, frame[actIndex].step, QImage::Format_RGB888  );//kopirovanie cvmat do qimage
@@ -64,21 +62,14 @@ void MainWindow::paintEvent(QPaintEvent *event)
     {
         if(updateLaserPicture==1) ///ak mam nove data z lidaru
         {
-            updateLaserPicture=0;
-
-            painter.setPen(pero);
-            //teraz tu kreslime random udaje... vykreslite to co treba... t.j. data z lidaru
-         //   std::cout<<copyOfLaserData.numberOfScans<<std::endl;
-            for(int k=0;k<copyOfLaserData.numberOfScans/*360*/;k++)
-            {
-                int dist=copyOfLaserData.Data[k].scanDistance/20; ///vzdialenost nahodne predelena 20 aby to nejako vyzeralo v okne.. zmen podla uvazenia
-                int xp=rect.width()-(rect.width()/2+dist*2*sin((360.0-copyOfLaserData.Data[k].scanAngle)*3.14159/180.0))+rect.topLeft().x(); //prepocet do obrazovky
-                int yp=rect.height()-(rect.height()/2+dist*2*cos((360.0-copyOfLaserData.Data[k].scanAngle)*3.14159/180.0))+rect.topLeft().y();//prepocet do obrazovky
-                if(rect.contains(xp,yp))//ak je bod vo vnutri nasho obdlznika tak iba vtedy budem chciet kreslit
-                    painter.drawEllipse(QPoint(xp, yp),2,2);
-            }
+            int dist=copyOfLaserData.Data[k].scanDistance/20; ///vzdialenost nahodne predelena 20 aby to nejako vyzeralo v okne.. zmen podla uvazenia
+            int xp=rect.width()-(rect.width()/2+dist*2*sin((360.0-copyOfLaserData.Data[k].scanAngle)*3.14159/180.0))+rect.topLeft().x(); //prepocet do obrazovky
+            int yp=rect.height()-(rect.height()/2+dist*2*cos((360.0-copyOfLaserData.Data[k].scanAngle)*3.14159/180.0))+rect.topLeft().y();//prepocet do obrazovky
+            if(rect.contains(xp,yp))//ak je bod vo vnutri nasho obdlznika tak iba vtedy budem chciet kreslit
+                painter.drawEllipse(QPoint(xp, yp),2,2);
         }
     }
+
 }
 
 
@@ -96,6 +87,7 @@ void  MainWindow::setUiValues(double robotX,double robotY,double robotFi)
 int MainWindow::processThisRobot(TKobukiData robotdata)
 {
 
+///TU PISTE KOD... TOTO JE TO MIESTO KED NEVIETE KDE ZACAT,TAK JE TO NAOZAJ TU. AK AJ TAK NEVIETE, SPYTAJTE SA CVICIACEHO MA TU NATO STRING KTORY DA DO HLADANIA XXX
 
     ///tu mozete robit s datami z robota
     /// ale nic vypoctovo narocne - to iste vlakno ktore cita data z robota
@@ -115,7 +107,8 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
     }
 ///TU PISTE KOD... TOTO JE TO MIESTO KED NEVIETE KDE ZACAT,TAK JE TO NAOZAJ TU. AK AJ TAK NEVIETE, SPYTAJTE SA CVICIACEHO MA TU NATO STRING KTORY DA DO HLADANIA XXX
 
-    if(datacounter%5)
+
+    if(datacounter%5==0)
     {
 
         ///ak nastavite hodnoty priamo do prvkov okna,ako je to na tychto zakomentovanych riadkoch tak sa moze stat ze vam program padne
@@ -234,18 +227,10 @@ void MainWindow::on_pushButton_4_clicked() //stop
 
 void MainWindow::on_pushButton_clicked()
 {
-    if(useCamera1==true)
-    {
-        useCamera1=false;
 
-        ui->pushButton->setText("use camera");
-    }
-    else
-    {
-        useCamera1=true;
 
-        ui->pushButton->setText("use laser");
-    }
+    ui->pushButton->setText("use laser");
+
 }
 
 void MainWindow::getNewFrame()
