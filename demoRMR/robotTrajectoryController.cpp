@@ -6,18 +6,21 @@ RobotTrajectoryController::RobotTrajectoryController(QObject *parrent, Robot *ro
 	: QObject(parrent)
 	, m_robot(robot)
 	, m_speedControlThread(parrent)
-	, m_timer(parrent)
+	, m_accelerationTimer(parrent)
 	, m_forwardSpeed(0)
 	, m_rotationSpeed(0)
 {
-	m_timer.setInterval(timerInterval);
-	m_timer.setSingleShot(false);
+	m_accelerationTimer.setInterval(timerInterval);
+	m_accelerationTimer.setSingleShot(false);
+
+	m_positionTimer.setInterval(timerInterval);
+	m_positionTimer.setSingleShot(false);
 
 	m_stoppingTimer.setInterval(3'000);
 	m_stoppingTimer.setSingleShot(true);
 
 	connect(&m_stoppingTimer, &QTimer::timeout, this, &RobotTrajectoryController::stop);
-	connect(&m_timer, &QTimer::timeout, this, &RobotTrajectoryController::control);
+	connect(&m_accelerationTimer, &QTimer::timeout, this, &RobotTrajectoryController::control);
 }
 
 void RobotTrajectoryController::setTranslationSpeed(double velocity, double accelerationRate)
@@ -30,6 +33,7 @@ void RobotTrajectoryController::setTranslationSpeed(double velocity, double acce
 	m_accelerationRate = accelerationRate;
 
 	if (velocity == 0) {
+		m_forwardSpeed = 0;
 		m_robot->setTranslationSpeed(0);
 		return;
 	}
@@ -38,7 +42,7 @@ void RobotTrajectoryController::setTranslationSpeed(double velocity, double acce
 		m_accelerationRate = - m_accelerationRate;
 	}
 
-	m_timer.start();
+	m_accelerationTimer.start();
 }
 
 void RobotTrajectoryController::setRotationSpeed(double omega, double accelerationRate)
@@ -50,11 +54,29 @@ void RobotTrajectoryController::setRotationSpeed(double omega, double accelerati
 	m_targetVelocity = omega;
 	m_accelerationRate = accelerationRate;
 
+	if (omega == 0) {
+		m_rotationSpeed = 0;
+		m_robot->setRotationSpeed(0);
+		return;
+	}
+
 	if (m_targetVelocity < m_rotationSpeed) {
 		m_accelerationRate = - m_accelerationRate;
 	}
 
-	m_timer.start();
+	m_accelerationTimer.start();
+}
+
+void RobotTrajectoryController::rotateRobotTo(double rotation)
+{
+	m_positionTimer.start();
+}
+
+void RobotTrajectoryController::moveForwardBy(double distance)
+{
+	auto speed = 300;
+	setTranslationSpeed(speed);
+	m_stoppingTimer.setInterval(distance * 100'000 / speed);
 }
 
 bool RobotTrajectoryController::isNear(double currentVelocity)
@@ -65,22 +87,25 @@ bool RobotTrajectoryController::isNear(double currentVelocity)
 void RobotTrajectoryController::controlTrajectory()
 {
 	MainWindow *win = qobject_cast<MainWindow*>(parent());
-	auto directions = win->calculateTrajectory();
+	// while(true) {
+		auto [distance, rotation] = win->calculateTrajectory();
 
-	setTranslationSpeed(500);
+		moveForwardBy(distance);
+	// }
 }
 
 void RobotTrajectoryController::stop()
 {
 	m_forwardSpeed = 0;
 	m_rotationSpeed = 0;
+	m_stoppingTimer.setInterval(3'000);
 	m_robot->setTranslationSpeed(0);
 }
 
 void RobotTrajectoryController::control()
 {
 	if (isNear(m_forwardSpeed) || isNear(m_rotationSpeed)) {
-		m_timer.stop();
+		m_accelerationTimer.stop();
 		m_stoppingTimer.start();
 		return;
 	}
