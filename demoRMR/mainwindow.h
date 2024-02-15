@@ -1,6 +1,9 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "pidcontroller.h"
+#include "qlineedit.h"
+#include "qthread.h"
 #include <QMainWindow>
 #include <QTimer>
 #ifdef _WIN32
@@ -37,6 +40,11 @@ public:
 
 	int processThisRobot(TKobukiData robotdata);
 
+private:
+	void paintEvent(QPaintEvent *event);// Q_DECL_OVERRIDE;
+	void calculateOdometry(const TKobukiData &robotdata);
+	void calculateTrajectory();
+
 private slots:
 	void on_pushButton_9_clicked();
 
@@ -51,20 +59,17 @@ private slots:
 	void on_pushButton_4_clicked();
 
 	void on_pushButton_clicked();
-	void getNewFrame();
 
 private:
 
 	//--skuste tu nic nevymazat... pridavajte co chcete, ale pri odoberani by sa mohol stat nejaky drobny problem, co bude vyhadzovat chyby
 	Ui::MainWindow *ui;
-	void paintEvent(QPaintEvent *event);// Q_DECL_OVERRIDE;
 	int updateLaserPicture;
 	LaserMeasurement copyOfLaserData;
 	std::string ipaddress;
 	Robot robot;
 	TKobukiData robotdata;
 	int datacounter;
-	QTimer *timer;
 
 	int lastLeftEncoder;
 	int lastRightEncoder;
@@ -72,13 +77,25 @@ private:
 	double m_x;
 	double m_y;
 
-	QTimer m_timer;
+	PIDController m_xControl;
+	PIDController m_yControl;
 
-	double forwardspeed;//mm/s
-	double rotationspeed;//omega/s
+	QTimer m_timer;
+	QTimer m_trajectoryTimer;
+
+	QThread *m_trajectoryThread;
+
+	double forwardspeed; //mm/s
+	double rotationspeed; //omega/s
+
 public slots:
 	void setUiValues(double robotX,double robotY,double robotFi);
 	void timeout();
+
+private slots:
+	bool updateTarget(QLineEdit *lineEdit, PIDController *controller);
+	void onSubmitButtonClicked(bool clicked);
+
 signals:
 	void uiValuesChanged(double newrobotX,double newrobotY,double newrobotFi); ///toto nema telo
 

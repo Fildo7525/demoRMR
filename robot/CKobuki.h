@@ -117,7 +117,8 @@ typedef struct
 	unsigned short analogInputCh3;
 	//---struktura s datami ktore sa nam tam objavia iba na poziadanie
 	TExtraRequestData extraInfo;
-} TKobukiData;
+}
+TKobukiData;
 
 
 typedef long(*src_callback_kobuki_data) (void *user_data, TKobukiData &Kobuki_data);
