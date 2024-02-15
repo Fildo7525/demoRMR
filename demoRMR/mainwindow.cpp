@@ -4,8 +4,10 @@
 #include "qnamespace.h"
 #include "qobject.h"
 #include "qpushbutton.h"
+#include "robotTrajectoryController.h"
 #include "ui_mainwindow.h"
 #include <QPainter>
+#include <chrono>
 #include <cmath>
 #include <math.h>
 #include <QThread>
@@ -31,9 +33,10 @@ MainWindow::MainWindow(QWidget *parent)
 	, m_y(0)
 	, m_xControl(1, 0, 0)
 	, m_yControl(1, 0, 0)
-	, m_timer(this)
+	, m_time(high_resolution_clock::now())
 	, m_trajectoryTimer(this)
 	, m_trajectoryThread(new QThread(this))
+	, m_controllerThread(new QThread(this))
 {
 	// tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
 	ipaddress="127.0.0.1"; // 192.168.1.11 127.0.0.1
@@ -41,7 +44,9 @@ MainWindow::MainWindow(QWidget *parent)
 	ui->setupUi(this);
 	datacounter=0;
 
-	connect(&m_timer, SIGNAL(timeout()), this, SLOT(timeout()));
+	// Object for managing the robot speed interactions.
+	m_trajectoryController = new RobotTrajectoryController(this, &robot);
+	m_trajectoryController->moveToThread(m_controllerThread);
 
     //tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
     ipaddress="127.0.0.1";//192.168.1.11toto je na niektory realny robot.. na lokal budete davat "127.0.0.1"
@@ -57,7 +62,12 @@ MainWindow::MainWindow(QWidget *parent)
     datacounter=0;
 
 
-	datacounter=0;
+	// Starting threads
+	m_trajectoryThread->start();
+	m_controllerThread->start();
+
+	// Starting all the timers.
+	m_trajectoryTimer.start();
 }
 
 MainWindow::~MainWindow()
@@ -90,13 +100,13 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 	/// teraz tu posielam rychlosti na zaklade toho co setne joystick a vypisujeme data z robota(kazdy 5ty krat. ale mozete skusit aj castejsie). vyratajte si polohu. a vypiste spravnu
 	/// tuto cast mozete vklude vymazat,alebo znasilnit na vas regulator alebo ake mate pohnutky
 	// if(forwardspeed==0 && rotationspeed!=0)
-	// 	robot.setRotationSpeed(rotationspeed);
+	// 	m_trajectoryController->setRotationSpeed(rotationspeed);
 	// else if(forwardspeed!=0 && rotationspeed==0)
-	// 	robot.setTranslationSpeed(forwardspeed);
+	// 	m_trajectoryController->setTranslationSpeed(forwardspeed);
 	// else if((forwardspeed!=0 && rotationspeed!=0))
 	// 	robot.setArcSpeed(forwardspeed,forwardspeed/rotationspeed);
 	// else
-	// 	robot.setTranslationSpeed(0);
+	// 	m_trajectoryController->setTranslationSpeed(0);
 
 	if(datacounter%5==0) {
 		/// ak nastavite hodnoty priamo do prvkov okna,ako je to na tychto zakomentovanych riadkoch tak sa moze stat ze vam program padne
@@ -163,9 +173,16 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 	int diffLeftEnc = robotdata.EncoderLeft - lastLeftEncoder;
 	int diffRightEnc = robotdata.EncoderRight - lastRightEncoder;
 
-	ui->timestampLineEdit->setText(QString::number(robotdata.timestamp));
+	auto now = high_resolution_clock::now();
+	{
+		m_mutex.lock();
+		m_timeDiff = duration_cast<milliseconds>(now - m_time).count() / 1'000.;
+		m_mutex.unlock();
+	}
+	m_time = now;
+	ui->timestampLineEdit->setText(QString::number(m_timeDiff));
 
-	if ( lastRightEncoder > 60'000 && robotdata.EncoderRight < 1'000)
+	if (lastRightEncoder > 60'000 && robotdata.EncoderRight < 1'000)
 		diffRightEnc += SHORT_MAX;
 	if (lastLeftEncoder > 60'000 && robotdata.EncoderLeft < 1'000)
 		diffLeftEnc += SHORT_MAX;
@@ -192,25 +209,34 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 	lastRightEncoder = robotdata.EncoderRight;
 
 	double l = (rightEncDist + leftEncDist) / 2.0;
-	m_fi = robotdata.GyroAngle / 100. * TO_RADIANS;
-
-	if (leftEncDist != 0 || rightEncDist != 0)
-		std::cout << "leftEncDist: " << leftEncDist << " rightEncDist: " << rightEncDist << std::endl;
-
-	m_x += l * std::cos(m_fi);
-	m_y += l * std::sin(m_fi);
+	{
+		m_mutex.lock();
+		m_fi = robotdata.GyroAngle / 100. * TO_RADIANS;
+		m_x += l * std::cos(m_fi);
+		m_y += l * std::sin(m_fi);
+		m_mutex.unlock();
+	}
 }
 
-void MainWindow::calculateTrajectory()
+QPair<double, double> MainWindow::calculateTrajectory()
 {
 	// Get current position and orientation (actual values)
-	double current_x = m_x;
-	double current_y = m_y;
-	double current_theta = m_fi;
+	double current_x;
+	double current_y;
+	double current_theta;
+
+	{
+		m_mutex.lock();
+		current_x = m_x;
+		current_y = m_y;
+		current_theta = m_fi;
+		m_mutex.unlock();
+	}
 
 	// Calculate PID control commands
 	double dx = m_xControl.compute(current_x);
 	double dy = m_yControl.compute(current_y);
+	std::cout << "dx: " << dx << " dy: " << dy << std::endl;
 
 	// Calculate angle to target
 	double angleToTarget = std::atan2(m_yControl.target() - current_y, m_xControl.target() - current_x);
@@ -221,33 +247,8 @@ void MainWindow::calculateTrajectory()
 
 	ui->distanceToTarget->setText(QString::number(distanceToTarget));
 	ui->angleToTarget->setText(QString::number(angleToTarget));
-	// Calculate angular velocity
-	// double angular_velocity = angle_to_target - current_theta;
 
-	robot.setRotationSpeed(angleToTarget);
-	robot.setTranslationSpeed(PI/3);
-
-	//std::cout << "Angle to target: " << angle_to_target << " angular velocity: " << angular_velocity << "                                                         \r" << std::ends;
-
-	// Check for obstacles using lidar data
-	// std::vector<double> distances(copyOfLaserData.numberOfScans);
-	// std::move(copyOfLaserData.Data[0], copyOfLaserData.Data[distances.size()], distances.begin());
-
-	// bool obstacle_detected = std::any_of(distances.begin(), distances.end(), [](double d) { return d < 0.2; });
-	// if (obstacle_detected)
-	// 	std::cout << "Obstacle detected                  \r" << std::ends;
-	// else
-	// 	std::cout << "No Obstacle detected                  \r" << std::ends;
-
-	// Adjust linear velocity if obstacle detected
-	// if (obstacle_detected) {
-	// 	linear_velocity = 0;
-	// } else {
-	// 	linear_velocity = 0.5; // Set linear velocity
-	// }
-
-	// // Move robot
-	// move(linear_velocity, angular_velocity);
+	return {distanceToTarget, angleToTarget};
 }
 
 /// toto je calback na data z lidaru, ktory ste podhodili robotu vo funkcii on_pushButton_9_clicked
@@ -313,31 +314,27 @@ void MainWindow::on_pushButton_9_clicked() //start button
 
 void MainWindow::on_pushButton_2_clicked() // forward
 {
-	robot.setTranslationSpeed(500);
-	m_timer.start();
+	m_trajectoryController->setTranslationSpeed(500);
 }
 
 void MainWindow::on_pushButton_3_clicked() // back
 {
-	robot.setTranslationSpeed(-250);
-	m_timer.start();
+	m_trajectoryController->setTranslationSpeed(-250);
 }
 
 void MainWindow::on_pushButton_6_clicked() // left
 {
-	robot.setRotationSpeed(3.14159/2);
-	m_timer.start();
+	m_trajectoryController->setRotationSpeed(3.14159/2);
 }
 
 void MainWindow::on_pushButton_5_clicked() // right
 {
-	robot.setRotationSpeed(-3.14159/2);
-	m_timer.start();
+	m_trajectoryController->setRotationSpeed(-3.14159/2);
 }
 
 void MainWindow::on_pushButton_4_clicked() // stop
 {
-	robot.setTranslationSpeed(0);
+	m_trajectoryController->setTranslationSpeed(0);
 }
 
 void MainWindow::on_pushButton_clicked()
@@ -347,8 +344,7 @@ void MainWindow::on_pushButton_clicked()
 
 void MainWindow::timeout()
 {
-	robot.setTranslationSpeed(0);
-	m_timer.stop();
+	m_trajectoryController->setTranslationSpeed(0);
 }
 
 bool MainWindow::updateTarget(QLineEdit *lineEdit, PIDController *controller)
@@ -366,6 +362,10 @@ bool MainWindow::updateTarget(QLineEdit *lineEdit, PIDController *controller)
 
 void MainWindow::onSubmitButtonClicked(bool clicked)
 {
-	updateTarget(ui->targetXLine, &m_xControl);
-	updateTarget(ui->targetYLine, &m_yControl);
+	bool ok1 = updateTarget(ui->targetXLine, &m_xControl);
+	bool ok2 = updateTarget(ui->targetYLine, &m_yControl);
+
+	if (ok1 && ok2) {
+		emit startGuiding();
+	}
 }

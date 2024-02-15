@@ -4,8 +4,10 @@
 #include "pidcontroller.h"
 #include "qlineedit.h"
 #include "qthread.h"
+#include "robotTrajectoryController.h"
 #include <QMainWindow>
 #include <QTimer>
+#include <QMutex>
 #ifdef _WIN32
 #include<windows.h>
 #endif
@@ -20,9 +22,11 @@
 #include<vector>
 //#include "ckobuki.h"
 //#include "rplidar.h"
+#include <chrono>
 
 #include "robot.h"
 
+using namespace std::chrono;
 
 namespace Ui {
 class MainWindow;
@@ -39,11 +43,11 @@ public:
 	int processThisLidar(LaserMeasurement laserData);
 
 	int processThisRobot(TKobukiData robotdata);
+	QPair<double, double> calculateTrajectory();
 
 private:
 	void paintEvent(QPaintEvent *event);// Q_DECL_OVERRIDE;
 	void calculateOdometry(const TKobukiData &robotdata);
-	void calculateTrajectory();
 
 private slots:
 	void on_pushButton_9_clicked();
@@ -59,6 +63,16 @@ private slots:
 	void on_pushButton_4_clicked();
 
 	void on_pushButton_clicked();
+	bool updateTarget(QLineEdit *lineEdit, PIDController *controller);
+	void onSubmitButtonClicked(bool clicked);
+
+public slots:
+	void setUiValues(double robotX,double robotY,double robotFi);
+	void timeout();
+
+private: signals:
+	void uiValuesChanged(double newrobotX,double newrobotY,double newrobotFi); ///toto nema telo
+	void startGuiding();
 
 private:
 
@@ -68,6 +82,7 @@ private:
 	LaserMeasurement copyOfLaserData;
 	std::string ipaddress;
 	Robot robot;
+	RobotTrajectoryController *m_trajectoryController;
 	TKobukiData robotdata;
 	int datacounter;
 
@@ -80,25 +95,17 @@ private:
 	PIDController m_xControl;
 	PIDController m_yControl;
 
-	QTimer m_timer;
+	time_point<steady_clock> m_time;
+	double m_timeDiff;
+
 	QTimer m_trajectoryTimer;
 
 	QThread *m_trajectoryThread;
+	QThread *m_controllerThread;
+	QMutex m_mutex;
 
 	double forwardspeed; //mm/s
 	double rotationspeed; //omega/s
-
-public slots:
-	void setUiValues(double robotX,double robotY,double robotFi);
-	void timeout();
-
-private slots:
-	bool updateTarget(QLineEdit *lineEdit, PIDController *controller);
-	void onSubmitButtonClicked(bool clicked);
-
-signals:
-	void uiValuesChanged(double newrobotX,double newrobotY,double newrobotFi); ///toto nema telo
-
 
 };
 
