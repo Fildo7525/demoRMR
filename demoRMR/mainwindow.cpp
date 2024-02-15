@@ -183,6 +183,11 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 	if (lastLeftEncoder > 60'000 && robotdata.EncoderLeft < 1'000)
 		diffLeftEnc += SHORT_MAX;
 
+	if (lastRightEncoder < 1'000 && robotdata.EncoderRight > 60'000)
+		diffRightEnc -= SHORT_MAX;
+	if (lastLeftEncoder < 1'000 && robotdata.EncoderLeft > 60'000)
+		diffLeftEnc -= SHORT_MAX;
+
 	auto leftEncDist = robot.tickToMeter * diffLeftEnc;
 	auto rightEncDist = robot.tickToMeter * diffRightEnc;
 
