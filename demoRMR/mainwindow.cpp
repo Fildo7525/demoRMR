@@ -1,5 +1,4 @@
 #include "mainwindow.h"
-#include "pidcontroller.h"
 #include "qlineedit.h"
 #include "qnamespace.h"
 #include "qobject.h"
@@ -31,8 +30,8 @@ MainWindow::MainWindow(QWidget *parent)
 	, m_fi(0)
 	, m_x(0)
 	, m_y(0)
-	, m_xControl(1, 0, 0)
-	, m_yControl(1, 0, 0)
+	, m_xTarget(0)
+	, m_yTarget(0)
 	, m_time(high_resolution_clock::now())
 	, m_trajectoryTimer(this)
 	, m_trajectoryThread(new QThread(this))
@@ -234,9 +233,9 @@ QPair<double, double> MainWindow::calculateTrajectory()
 	}
 
 	// Calculate angle to target
-	double angleToTarget = std::atan2(m_yControl.target() - current_y, m_xControl.target() - current_x);
+	double angleToTarget = std::atan2(m_yTarget - current_y, m_xTarget - current_x);
 	double distanceToTarget = std::sqrt(
-		std::pow( m_yControl.target() - current_y + m_xControl.target() - current_x,
+		std::pow(m_yTarget - current_y + m_xTarget - current_x,
 		2)
 	);
 
@@ -355,23 +354,23 @@ void MainWindow::timeout()
 	m_trajectoryController->setTranslationSpeed(0, true);
 }
 
-bool MainWindow::updateTarget(QLineEdit *lineEdit, PIDController *controller)
+bool MainWindow::updateTarget(QLineEdit *lineEdit, double &target)
 {
 	bool ok = true;
-	double target = lineEdit->text().toDouble(&ok);
+	double tmp = lineEdit->text().toDouble(&ok);
 	if (!ok) {
-		lineEdit->setText(QString::number(controller->target()));
+		lineEdit->setText(QString::number(target));
 		return false;
 	}
 
-	controller->setTarget(target);
+	target = tmp;
 	return true;
 }
 
 void MainWindow::onSubmitButtonClicked(bool clicked)
 {
-	bool ok1 = updateTarget(ui->targetXLine, &m_xControl);
-	bool ok2 = updateTarget(ui->targetYLine, &m_yControl);
+	bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
+	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
 
 	if (ok1 && ok2) {
 		emit startGuiding();

@@ -64,7 +64,7 @@ private slots:
 	void on_pushButton_4_clicked();
 
 	void on_pushButton_clicked();
-	bool updateTarget(QLineEdit *lineEdit, PIDController *controller);
+	bool updateTarget(QLineEdit *lineEdit, double &controller);
 	void onSubmitButtonClicked(bool clicked);
 
 public slots:
@@ -93,8 +93,8 @@ private:
 	double m_x;
 	double m_y;
 
-	PIDController m_xControl;
-	PIDController m_yControl;
+	double m_xTarget;
+	double m_yTarget;
 
 	time_point<steady_clock> m_time;
 	double m_timeDiff;
