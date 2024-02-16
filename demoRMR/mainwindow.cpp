@@ -69,6 +69,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+	m_controllerThread->exit(0);
+	m_trajectoryThread->exit(0);
 	delete ui;
 }
 
@@ -209,20 +211,13 @@ QPair<double, double> MainWindow::calculateTrajectory()
 	// Get current position and orientation (actual values)
 	double current_x;
 	double current_y;
-	double current_theta;
 
 	{
 		m_mutex.lock();
 		current_x = m_x;
 		current_y = m_y;
-		current_theta = m_fi;
 		m_mutex.unlock();
 	}
-
-	// Calculate PID control commands
-	double dx = m_xControl.compute(current_x);
-	double dy = m_yControl.compute(current_y);
-	std::cout << "dx: " << dx << " dy: " << dy << std::endl;
 
 	// Calculate angle to target
 	double angleToTarget = std::atan2(m_yControl.target() - current_y, m_xControl.target() - current_x);
@@ -235,6 +230,19 @@ QPair<double, double> MainWindow::calculateTrajectory()
 	ui->angleToTarget->setText(QString::number(angleToTarget));
 
 	return {distanceToTarget, angleToTarget};
+}
+
+double MainWindow::rotationError()
+{
+	auto [dir, rot] = calculateTrajectory();
+	double diff;
+	{
+		m_mutex.lock();
+		diff = m_fi - rot;
+		m_mutex.unlock();
+	}
+
+	return -diff;
 }
 
 /// toto je calback na data z lidaru, ktory ste podhodili robotu vo funkcii on_pushButton_9_clicked
@@ -271,27 +279,27 @@ void MainWindow::on_pushButton_9_clicked() // start button
 
 void MainWindow::on_pushButton_2_clicked() // forward
 {
-	m_trajectoryController->setTranslationSpeed(500);
+	m_trajectoryController->setTranslationSpeed(500, true);
 }
 
 void MainWindow::on_pushButton_3_clicked() // back
 {
-	m_trajectoryController->setTranslationSpeed(-250);
+	m_trajectoryController->setTranslationSpeed(-250, true);
 }
 
 void MainWindow::on_pushButton_6_clicked() // left
 {
-	m_trajectoryController->setRotationSpeed(3.14159/2);
+	m_trajectoryController->setRotationSpeed(3.14159/2, true);
 }
 
 void MainWindow::on_pushButton_5_clicked() // right
 {
-	m_trajectoryController->setRotationSpeed(-3.14159/2);
+	m_trajectoryController->setRotationSpeed(-3.14159/2, true);
 }
 
 void MainWindow::on_pushButton_4_clicked() // stop
 {
-	m_trajectoryController->setTranslationSpeed(0);
+	m_trajectoryController->setTranslationSpeed(0, true);
 }
 
 void MainWindow::on_pushButton_clicked()
@@ -301,7 +309,7 @@ void MainWindow::on_pushButton_clicked()
 
 void MainWindow::timeout()
 {
-	m_trajectoryController->setTranslationSpeed(0);
+	m_trajectoryController->setTranslationSpeed(0, true);
 }
 
 bool MainWindow::updateTarget(QLineEdit *lineEdit, PIDController *controller)

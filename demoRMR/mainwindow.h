@@ -44,6 +44,7 @@ public:
 
 	int processThisRobot(TKobukiData robotdata);
 	QPair<double, double> calculateTrajectory();
+	double rotationError();
 
 private:
 	void paintEvent(QPaintEvent *event);// Q_DECL_OVERRIDE;
