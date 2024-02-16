@@ -94,7 +94,7 @@ void RobotTrajectoryController::moveForwardBy(double distance)
 	m_accelerationTimer.stop();
 	m_stoppingTimer.stop();
 
-	m_controller = std::make_shared<PIDController>(100, 0, 0, distance);
+	m_controller = std::make_shared<PIDController>(100, 5, 0, distance);
 	std::cout << "Starting position timer" << std::endl;
 	m_positionTimer.start();
 }
