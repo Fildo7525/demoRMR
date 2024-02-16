@@ -18,3 +18,12 @@ double PIDController::compute(double current)
 
 	return m_kp * error + m_ki * m_integral + m_kd * derivative;
 }
+
+double PIDController::computeFromError(double error)
+{
+	m_integral += error;
+	double derivative = error - m_prev_error;
+	m_prev_error = error;
+
+	return m_kp * error + m_ki * m_integral + m_kd * derivative;
+}

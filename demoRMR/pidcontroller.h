@@ -2,6 +2,7 @@
 #define PIDCONTROLLER_H
 
 #include <QObject>
+#include <memory>
 
 // PID Controller class
 class PIDController
@@ -19,6 +20,7 @@ private:
 public:
 	PIDController(double p, double i, double d, double target = 0);
 	double compute(double current);
+	double computeFromError(double error);
 	void setTarget(double newTarget) { m_target = newTarget; }
 	double target() const { return m_target; }
 };

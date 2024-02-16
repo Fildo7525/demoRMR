@@ -1,6 +1,11 @@
 #include "robotTrajectoryController.h"
 #include "mainwindow.h"
+#include "pidcontroller.h"
 #include "qtimer.h"
+#include <chrono>
+#include <ios>
+#include <memory>
+#include <thread>
 
 RobotTrajectoryController::RobotTrajectoryController(QObject *parrent, Robot *robot, double timerInterval)
 	: QObject(parrent)
@@ -10,7 +15,7 @@ RobotTrajectoryController::RobotTrajectoryController(QObject *parrent, Robot *ro
 	, m_forwardSpeed(0)
 	, m_rotationSpeed(0)
 {
-	m_accelerationTimer.setInterval(timerInterval);
+	m_accelerationTimer.setInterval(timerInterval/2);
 	m_accelerationTimer.setSingleShot(false);
 
 	m_positionTimer.setInterval(timerInterval);
@@ -21,13 +26,16 @@ RobotTrajectoryController::RobotTrajectoryController(QObject *parrent, Robot *ro
 
 	connect(&m_stoppingTimer, &QTimer::timeout, this, &RobotTrajectoryController::stop);
 	connect(&m_accelerationTimer, &QTimer::timeout, this, &RobotTrajectoryController::control);
+	connect(&m_positionTimer, &QTimer::timeout, this, &RobotTrajectoryController::onTimeoutChangePosition);
 }
 
-void RobotTrajectoryController::setTranslationSpeed(double velocity, double accelerationRate)
+void RobotTrajectoryController::setTranslationSpeed(double velocity, bool stopPositionTimer, double accelerationRate)
 {
 	m_rotationSpeed = 0;
 	isRotating = false;
 	m_stoppingTimer.stop();
+	if (stopPositionTimer)
+		m_positionTimer.stop();
 
 	m_targetVelocity = velocity;
 	m_accelerationRate = accelerationRate;
@@ -45,11 +53,13 @@ void RobotTrajectoryController::setTranslationSpeed(double velocity, double acce
 	m_accelerationTimer.start();
 }
 
-void RobotTrajectoryController::setRotationSpeed(double omega, double accelerationRate)
+void RobotTrajectoryController::setRotationSpeed(double omega, bool stopPositionTimer, double accelerationRate)
 {
 	m_forwardSpeed = 0;
 	isRotating = true;
 	m_stoppingTimer.stop();
+	if (stopPositionTimer)
+		m_positionTimer.stop();
 
 	m_targetVelocity = omega;
 	m_accelerationRate = accelerationRate;
@@ -69,14 +79,24 @@ void RobotTrajectoryController::setRotationSpeed(double omega, double accelerati
 
 void RobotTrajectoryController::rotateRobotTo(double rotation)
 {
+	isRotating = true;
+	m_accelerationTimer.stop();
+	m_stoppingTimer.stop();
+
+	m_controller = std::make_shared<PIDController>(1, 0, 0, rotation);
+	std::cout << "Starting position timer" << std::endl;
 	m_positionTimer.start();
 }
 
 void RobotTrajectoryController::moveForwardBy(double distance)
 {
-	auto speed = 300;
-	setTranslationSpeed(speed);
-	m_stoppingTimer.setInterval(distance * 100'000 / speed);
+	isRotating = false;
+	m_accelerationTimer.stop();
+	m_stoppingTimer.stop();
+
+	m_controller = std::make_shared<PIDController>(100, 0, 0, distance);
+	std::cout << "Starting position timer" << std::endl;
+	m_positionTimer.start();
 }
 
 bool RobotTrajectoryController::isNear(double currentVelocity)
@@ -84,20 +104,39 @@ bool RobotTrajectoryController::isNear(double currentVelocity)
 	return std::abs(currentVelocity - m_targetVelocity) <= std::abs(m_accelerationRate/2.);
 }
 
+double RobotTrajectoryController::distanceError()
+{
+	MainWindow *win = qobject_cast<MainWindow*>(parent());
+	auto [distance, rotation] = win->calculateTrajectory();
+	return distance;
+}
+
+double RobotTrajectoryController::rotationError()
+{
+	MainWindow *win = qobject_cast<MainWindow*>(parent());
+	return win->rotationError();
+}
+
 void RobotTrajectoryController::controlTrajectory()
 {
 	MainWindow *win = qobject_cast<MainWindow*>(parent());
-	// while(true) {
-		auto [distance, rotation] = win->calculateTrajectory();
+	auto [distance, rotation] = win->calculateTrajectory();
 
-		moveForwardBy(distance);
-	// }
+	std::cout << "Moving to rotation " << rotation << std::endl;
+	moveForwardBy(distance);
+	//rotateRobotTo(rotation);
+	std::cout << "Is position timer active: " << std::boolalpha << m_positionTimer.isActive() << std::noboolalpha << std::endl;
 }
 
 void RobotTrajectoryController::stop()
 {
 	m_forwardSpeed = 0;
 	m_rotationSpeed = 0;
+
+	m_accelerationTimer.stop();
+	m_positionTimer.stop();
+	m_stoppingTimer.stop();
+
 	m_stoppingTimer.setInterval(3'000);
 	m_robot->setTranslationSpeed(0);
 }
@@ -117,5 +156,32 @@ void RobotTrajectoryController::control()
 	else {
 		m_forwardSpeed += m_accelerationRate;
 		m_robot->setTranslationSpeed(m_forwardSpeed);
+	}
+}
+
+void RobotTrajectoryController::onTimeoutChangePosition()
+{
+	double error;
+
+	if (isRotating) {
+		error = rotationError();
+	}
+	else {
+		error = distanceError();
+	}
+
+	if (std::abs(error) < 0.2) {
+		stop();
+		return;
+	}
+
+	double u = m_controller->computeFromError(error);
+	std::cout << "Akcny zasah: " << u << std::endl;
+
+	if (isRotating) {
+		setRotationSpeed(u);
+	}
+	else {
+		setTranslationSpeed(u);
 	}
 }
