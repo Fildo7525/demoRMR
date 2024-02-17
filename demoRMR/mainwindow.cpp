@@ -32,8 +32,6 @@ MainWindow::MainWindow(QWidget *parent)
 	, m_y(0)
 	, m_xTarget(0)
 	, m_yTarget(0)
-	, m_time(high_resolution_clock::now())
-	, m_trajectoryTimer(this)
 	, m_trajectoryThread(new QThread(this))
 	, m_controllerThread(new QThread(this))
 {
@@ -44,26 +42,16 @@ MainWindow::MainWindow(QWidget *parent)
 	datacounter=0;
 
 	// Object for managing the robot speed interactions.
-	m_trajectoryController = new RobotTrajectoryController(this, &robot);
+	m_trajectoryController = new RobotTrajectoryController(nullptr, &robot);
 	m_trajectoryController->moveToThread(m_controllerThread);
-
-	// Setting up timer that manages calculation of the desired trajectory.
-	// m_trajectoryTimer.setTimerType(Qt::TimerType::PreciseTimer);
-	// m_trajectoryTimer.setSingleShot(false);
-	// m_trajectoryTimer.setInterval(500);
-	// m_trajectoryTimer.moveToThread(m_trajectoryThread);
 
 	// Creating all connections
 	connect(this, &MainWindow::startGuiding, m_trajectoryController, &RobotTrajectoryController::controlTrajectory);
-	// connect(&m_trajectoryTimer, &QTimer::timeout, this, &MainWindow::calculateTrajectory);
 	connect(ui->submitTargetButton, &QPushButton::clicked, this, &MainWindow::onSubmitButtonClicked);
 
 	// Starting threads
 	m_trajectoryThread->start();
 	m_controllerThread->start();
-
-	// Starting all the timers.
-	m_trajectoryTimer.start();
 }
 
 MainWindow::~MainWindow()
@@ -71,6 +59,7 @@ MainWindow::~MainWindow()
 	m_controllerThread->exit(0);
 	m_trajectoryThread->exit(0);
 	delete ui;
+	delete m_trajectoryController;
 }
 
 /// toto je slot. niekde v kode existuje signal, ktory je prepojeny. pouziva sa napriklad (v tomto pripade) ak chcete dostat data z jedneho vlakna (robot) do ineho (ui)
@@ -169,15 +158,6 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 {
 	int diffLeftEnc = robotdata.EncoderLeft - lastLeftEncoder;
 	int diffRightEnc = robotdata.EncoderRight - lastRightEncoder;
-
-	auto now = high_resolution_clock::now();
-	{
-		m_mutex.lock();
-		m_timeDiff = duration_cast<milliseconds>(now - m_time).count() / 1'000.;
-		m_mutex.unlock();
-	}
-	m_time = now;
-	ui->timestampLineEdit->setText(QString::number(m_timeDiff));
 
 	if (lastRightEncoder > 60'000 && robotdata.EncoderRight < 1'000)
 		diffRightEnc += SHORT_MAX;

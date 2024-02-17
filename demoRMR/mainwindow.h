@@ -96,11 +96,6 @@ private:
 	double m_xTarget;
 	double m_yTarget;
 
-	time_point<steady_clock> m_time;
-	double m_timeDiff;
-
-	QTimer m_trajectoryTimer;
-
 	QThread *m_trajectoryThread;
 	QThread *m_controllerThread;
 	QMutex m_mutex;
