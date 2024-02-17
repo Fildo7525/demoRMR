@@ -32,6 +32,7 @@ MainWindow::MainWindow(QWidget *parent)
 	, m_y(0)
 	, m_xTarget(0)
 	, m_yTarget(0)
+
 	, m_trajectoryThread(new QThread(this))
 	, m_controllerThread(new QThread(this))
 {
@@ -42,16 +43,23 @@ MainWindow::MainWindow(QWidget *parent)
 	datacounter=0;
 
 	// Object for managing the robot speed interactions.
-	m_trajectoryController = new RobotTrajectoryController(nullptr, &robot);
-	m_trajectoryController->moveToThread(m_controllerThread);
+	m_trajectoryController = new RobotTrajectoryController(&robot, this);
 
 	// Creating all connections
-	connect(this, &MainWindow::startGuiding, m_trajectoryController, &RobotTrajectoryController::controlTrajectory);
-	connect(ui->submitTargetButton, &QPushButton::clicked, this, &MainWindow::onSubmitButtonClicked);
+	connect(this, &MainWindow::moveForward, m_trajectoryController, &RobotTrajectoryController::onMoveForwardMove, Qt::QueuedConnection);
+	connect(this, &MainWindow::changeRotation, m_trajectoryController, &RobotTrajectoryController::onChangeRotationRotate, Qt::QueuedConnection);
+
+	connect(this, &MainWindow::resultsReady, m_trajectoryController, &RobotTrajectoryController::handleResults, Qt::QueuedConnection);
+
+	connect(ui->submitTargetButton, &QPushButton::clicked, this, &MainWindow::onSubmitButtonClicked, Qt::QueuedConnection);
 
 	// Starting threads
 	m_trajectoryThread->start();
 	m_controllerThread->start();
+
+	std::cout << __FUNCTION__ << " " << std::this_thread::get_id() << std::endl;
+
+	m_trajectoryController->moveToThread(m_controllerThread);
 }
 
 MainWindow::~MainWindow()
@@ -185,6 +193,12 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 	}
 }
 
+void MainWindow::_calculateTrajectory()
+{
+	auto [distance, angle] = calculateTrajectory();
+	emit resultsReady(distance, angle);
+}
+
 QPair<double, double> MainWindow::calculateTrajectory()
 {
 	// Get current position and orientation (actual values)
@@ -267,27 +281,27 @@ void MainWindow::on_pushButton_9_clicked() // start button
 
 void MainWindow::on_pushButton_2_clicked() // forward
 {
-	m_trajectoryController->setTranslationSpeed(500, true);
+	emit moveForward(500);
 }
 
 void MainWindow::on_pushButton_3_clicked() // back
 {
-	m_trajectoryController->setTranslationSpeed(-250, true);
+	emit moveForward(-250);
 }
 
 void MainWindow::on_pushButton_6_clicked() // left
 {
-	m_trajectoryController->setRotationSpeed(3.14159/2, true);
+	emit changeRotation(3.14159/2);
 }
 
 void MainWindow::on_pushButton_5_clicked() // right
 {
-	m_trajectoryController->setRotationSpeed(-3.14159/2, true);
+	emit changeRotation(-3.14159/2);
 }
 
 void MainWindow::on_pushButton_4_clicked() // stop
 {
-	m_trajectoryController->setTranslationSpeed(0, true);
+	emit moveForward(0);
 }
 
 void MainWindow::on_pushButton_clicked()
@@ -319,6 +333,6 @@ void MainWindow::onSubmitButtonClicked(bool clicked)
 	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
 
 	if (ok1 && ok2) {
-		emit startGuiding();
+		_calculateTrajectory();
 	}
 }
