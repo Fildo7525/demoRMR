@@ -12,11 +12,7 @@ PIDController::PIDController(double p, double i, double d, double target)
 double PIDController::compute(double current)
 {
 	double error = m_target - current;
-	m_integral += error;
-	double derivative = error - m_prev_error;
-	m_prev_error = error;
-
-	return m_kp * error + m_ki * m_integral + m_kd * derivative;
+	return computeFromError(error);
 }
 
 double PIDController::computeFromError(double error)
