@@ -7,6 +7,7 @@
 #include <QObject>
 #include <QWidget>
 #include <QThread>
+#include <condition_variable>
 #include <memory>
 
 class RobotTrajectoryController
@@ -14,7 +15,7 @@ class RobotTrajectoryController
 {
 	Q_OBJECT
 public:
-	RobotTrajectoryController(QObject *parrent, Robot *robot, double timerInterval = 100);
+	RobotTrajectoryController(Robot *robot, QObject *window, double timerInterval = 100);
 
 	void setTranslationSpeed(double velocity, bool stopPositionTimer = false, double accelerationRate = 50);
 	void setRotationSpeed(double omega, bool stopPositionTimer = false, double accelerationRate = 0.1);
@@ -28,23 +29,29 @@ private:
 	double rotationError();
 
 public slots:
-	void controlTrajectory();
 	void stop();
 	void control();
 	void onTimeoutChangePosition();
 
+	void onMoveForwardMove(double speed);
+	void onChangeRotationRotate(double speed);
+	void handleResults(double distance, double rotation);
+
 private:
 	Robot *m_robot;
-
-	QThread m_speedControlThread;
+	QObject *m_mainWindow;
 
 	QTimer m_accelerationTimer;
-	QTimer m_stoppingTimer;
 	QTimer m_positionTimer;
+	QTimer m_stoppingTimer;
 
 	std::shared_ptr<PIDController> m_controller;
 
 	bool isRotating;
+	bool m_stopped;
+
+	std::mutex m_mutex;
+	std::condition_variable m_stopGate;
 
 	double m_forwardSpeed;
 	double m_rotationSpeed;

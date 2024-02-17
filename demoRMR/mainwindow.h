@@ -43,12 +43,13 @@ public:
 	int processThisLidar(LaserMeasurement laserData);
 
 	int processThisRobot(TKobukiData robotdata);
-	QPair<double, double> calculateTrajectory();
 	double rotationError();
+	QPair<double, double> calculateTrajectory();
 
 private:
-	void paintEvent(QPaintEvent *event);// Q_DECL_OVERRIDE;
+	void paintEvent(QPaintEvent *event); // Q_DECL_OVERRIDE;
 	void calculateOdometry(const TKobukiData &robotdata);
+	void _calculateTrajectory();
 
 private slots:
 	void on_pushButton_9_clicked();
@@ -75,6 +76,12 @@ private: signals:
 	void uiValuesChanged(double newrobotX,double newrobotY,double newrobotFi); ///toto nema telo
 	void startGuiding();
 
+	void moveForward(double speed);
+	void changeRotation(double rotation);
+
+public: signals:
+	void resultsReady(double distance, double rotaiton);
+
 private:
 
 	//--skuste tu nic nevymazat... pridavajte co chcete, ale pri odoberani by sa mohol stat nejaky drobny problem, co bude vyhadzovat chyby
@@ -100,9 +107,8 @@ private:
 	QThread *m_controllerThread;
 	QMutex m_mutex;
 
-	double forwardspeed; //mm/s
-	double rotationspeed; //omega/s
-
+	double forwardspeed; // mm/s
+	double rotationspeed; // omega/s
 };
 
 #endif // MAINWINDOW_H
