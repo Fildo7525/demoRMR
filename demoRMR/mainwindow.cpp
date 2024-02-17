@@ -209,8 +209,8 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 QPair<double, double> MainWindow::calculateTrajectory()
 {
 	// Get current position and orientation (actual values)
-	double current_x;
-	double current_y;
+	double current_x = 0;
+	double current_y = 0;
 
 	{
 		m_mutex.lock();
@@ -235,12 +235,21 @@ QPair<double, double> MainWindow::calculateTrajectory()
 double MainWindow::rotationError()
 {
 	auto [dir, rot] = calculateTrajectory();
-	double diff;
+	double diff, fi;
 	{
 		m_mutex.lock();
-		diff = m_fi - rot;
+		fi = m_fi;
 		m_mutex.unlock();
 	}
+
+	if (fi > PI/2 && rot < -PI/2) {
+		fi -= 2*PI;
+	}
+	if (fi < -PI/2 && rot > PI/2) {
+		fi += 2*PI;
+	}
+
+	diff = fi - rot;
 
 	return -diff;
 }
