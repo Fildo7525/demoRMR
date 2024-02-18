@@ -6,10 +6,10 @@
 #include "robotTrajectoryController.h"
 #include "ui_mainwindow.h"
 #include <QPainter>
-#include <chrono>
 #include <cmath>
 #include <math.h>
 #include <QThread>
+#include <QDebug>
 /// TOTO JE DEMO PROGRAM...AK SI HO NASIEL NA PC V LABAKU NEPREPISUJ NIC,ALE SKOPIRUJ SI MA NIEKAM DO INEHO FOLDERA
 /// AK HO MAS Z GITU A ROBIS NA LABAKOVOM PC, TAK SI HO VLOZ DO FOLDERA KTORY JE JASNE ODLISITELNY OD TVOJICH KOLEGOV
 /// NASLEDNE V POLOZKE Projects SKONTROLUJ CI JE VYPNUTY shadow build...
@@ -193,13 +193,52 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 	}
 }
 
+static QVector<double> generateSequence(double min, double max)
+{
+	QVector<double> ret;
+
+	for (int var = min+1; var < (int)max; var+=2) {
+		ret.push_back(var);
+	}
+	ret.push_back(max);
+
+	return ret;
+}
+
 void MainWindow::_calculateTrajectory()
 {
 	auto [distance, angle] = calculateTrajectory();
-	emit resultsReady(distance, angle);
+
+	QVector<double> X = generateSequence(m_x, m_xTarget);
+	QVector<double> Y;
+
+	Y.reserve(X.size());
+	auto diff = (m_yTarget - m_y) / X.size();
+	for (int i = 1; i <= X.size(); i++) {
+		Y.push_back(m_y + i*diff);
+	}
+
+	QVector<QPointF> points;
+	for (int var = 0; var < X.size(); ++var) {
+		points.push_back({X[var], Y[var]});
+	}
+
+	qDebug() << "Points: " << points;
+	emit resultsReady(distance, angle, points);
 }
 
 QPair<double, double> MainWindow::calculateTrajectory()
+{
+	// Get current position and orientation (actual values)
+	auto [distanceToTarget, angleToTarget] = calculateTrajectoryTo({m_xTarget, m_yTarget});
+
+	ui->distanceToTarget->setText(QString::number(distanceToTarget));
+	ui->angleToTarget->setText(QString::number(angleToTarget));
+
+	return {distanceToTarget, angleToTarget};
+}
+
+QPair<double, double> MainWindow::calculateTrajectoryTo(QPair<double, double> point)
 {
 	// Get current position and orientation (actual values)
 	double current_x = 0;
@@ -213,21 +252,40 @@ QPair<double, double> MainWindow::calculateTrajectory()
 	}
 
 	// Calculate angle to target
-	double angleToTarget = std::atan2(m_yTarget - current_y, m_xTarget - current_x);
+	double angleToTarget = std::atan2(point.second - current_y, point.first - current_x);
 	double distanceToTarget = std::sqrt(
-		std::pow(m_yTarget - current_y + m_xTarget - current_x,
-		2)
-	);
-
-	ui->distanceToTarget->setText(QString::number(distanceToTarget));
-	ui->angleToTarget->setText(QString::number(angleToTarget));
+		std::pow(point.second - current_y + point.first - current_x,
+				 2)
+		);
 
 	return {distanceToTarget, angleToTarget};
 }
 
-double MainWindow::rotationError()
+double MainWindow::finalRotationError()
 {
 	auto [dir, rot] = calculateTrajectory();
+	double diff, fi;
+	{
+		m_mutex.lock();
+		fi = m_fi;
+		m_mutex.unlock();
+	}
+
+	if (fi > PI/2 && rot < -PI/2) {
+		fi -= 2*PI;
+	}
+	if (fi < -PI/2 && rot > PI/2) {
+		fi += 2*PI;
+	}
+
+	diff = fi - rot;
+
+	return -diff;
+}
+
+double MainWindow::localRotationError(QPair<double, double> point)
+{
+	auto [dir, rot] = calculateTrajectoryTo(point);
 	double diff, fi;
 	{
 		m_mutex.lock();

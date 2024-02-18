@@ -1,6 +1,8 @@
 #include "robotTrajectoryController.h"
 #include "mainwindow.h"
 #include "pidcontroller.h"
+#include "qdebug.h"
+#include "qnamespace.h"
 #include "qtimer.h"
 #include <memory>
 #include <thread>
@@ -24,9 +26,12 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	m_stoppingTimer.setInterval(3'000);
 	m_stoppingTimer.setSingleShot(true);
 
-	connect(&m_stoppingTimer, &QTimer::timeout, this, &RobotTrajectoryController::stop);
-	connect(&m_accelerationTimer, &QTimer::timeout, this, &RobotTrajectoryController::control);
-	connect(&m_positionTimer, &QTimer::timeout, this, &RobotTrajectoryController::onTimeoutChangePosition);
+	connect(&m_stoppingTimer, &QTimer::timeout, this, &RobotTrajectoryController::stop, Qt::QueuedConnection);
+	connect(&m_accelerationTimer, &QTimer::timeout, this, &RobotTrajectoryController::control, Qt::QueuedConnection);
+	connect(&m_positionTimer, &QTimer::timeout, this, &RobotTrajectoryController::onTimeoutChangePosition, Qt::QueuedConnection);
+
+	connect(this, &RobotTrajectoryController::requestMovement, this, &RobotTrajectoryController::onRequestMovementMove, Qt::QueuedConnection);
+	connect(this, &RobotTrajectoryController::requestRotation, this, &RobotTrajectoryController::onRequestRotationMove, Qt::QueuedConnection);
 }
 
 void RobotTrajectoryController::setTranslationSpeed(double velocity, bool stopPositionTimer, double accelerationRate)
@@ -56,7 +61,7 @@ void RobotTrajectoryController::setTranslationSpeed(double velocity, bool stopPo
 
 void RobotTrajectoryController::setRotationSpeed(double omega, bool stopPositionTimer, double accelerationRate)
 {
-	std::cout << "setting rotation Speed\n";
+	// std::cout << "setting rotation Speed\n";
 	m_forwardSpeed = 0;
 	isRotating = true;
 	m_stoppingTimer.stop();
@@ -77,7 +82,7 @@ void RobotTrajectoryController::setRotationSpeed(double omega, bool stopPosition
 		m_accelerationRate = - m_accelerationRate;
 	}
 
-	std::cout << "Rotation Speed was set\n";
+	//std::cout << "Rotation Speed was set\n";
 	m_accelerationTimer.start();
 }
 
@@ -97,6 +102,7 @@ void RobotTrajectoryController::moveForwardBy(double distance)
 {
 	isRotating = false;
 	m_stopped = false;
+
 	m_accelerationTimer.stop();
 	m_stoppingTimer.stop();
 
@@ -110,18 +116,36 @@ bool RobotTrajectoryController::isNear(double currentVelocity)
 	return std::abs(currentVelocity - m_targetVelocity) <= std::abs(m_accelerationRate/2.);
 }
 
-double RobotTrajectoryController::distanceError()
+double RobotTrajectoryController::finalDistanceError()
 {
 	MainWindow *win = qobject_cast<MainWindow*>(m_mainWindow);
 	auto [distance, rotation] = win->calculateTrajectory();
 	return distance;
 }
 
-double RobotTrajectoryController::rotationError()
+double RobotTrajectoryController::localDistanceError()
+{
+	QPointF point = m_points.first();
+
+	MainWindow *win = qobject_cast<MainWindow*>(m_mainWindow);
+	auto [distance, rotation] = win->calculateTrajectoryTo({point.x(), point.y()});
+
+	return distance;
+}
+
+double RobotTrajectoryController::localRotationError()
+{
+	QPointF point = m_points.first();
+
+	MainWindow *win = qobject_cast<MainWindow*>(m_mainWindow);
+	return win->localRotationError({point.x(), point.y()});
+}
+
+double RobotTrajectoryController::finalRotationError()
 {
 	MainWindow *win = qobject_cast<MainWindow*>(m_mainWindow);
 	std::cout << "Rotation error detection\n";
-	return win->rotationError();
+	return win->finalRotationError();
 }
 
 void RobotTrajectoryController::stop()
@@ -162,19 +186,30 @@ void RobotTrajectoryController::onTimeoutChangePosition()
 	double error;
 
 	if (isRotating) {
-		error = rotationError();
+		error = localRotationError();
 	}
 	else {
-		error = distanceError();
+		error = localDistanceError();
 	}
 
 	std::cout << "Error: " << error << "\n";
 	if (std::abs(error) < 0.1) {
+		qDebug() << "Error is less than 0.1. It's " << error;
+
 		stop();
+		qDebug() << m_points;
+		if (isRotating) {
+			// TODO: handle rotating to the local endpoint.
+			emit requestMovement(localDistanceError());
+		}
+		if (!isRotating && finalDistanceError() > 0.1) {
+			if (m_points.size() > 1)
+				m_points.removeFirst();
 
-		// std::unique_lock<std::mutex> lock(m_mutex);
-		// m_stopGate.notify_one();
-
+			qDebug() << m_points;
+			emit requestRotation(localRotationError());
+			// TODO: handle forward movement to the local endpoint.
+		}
 		return;
 	}
 
@@ -199,13 +234,18 @@ void RobotTrajectoryController::onChangeRotationRotate(double speed)
 	setRotationSpeed(speed, true);
 }
 
-void RobotTrajectoryController::handleResults(double distance, double rotation)
+void RobotTrajectoryController::handleResults(double distance, double rotation, QVector<QPointF> points)
+{
+	m_points = points;
+	rotateRobotTo(rotation);
+}
+
+void RobotTrajectoryController::onRequestMovementMove(double distance)
+{
+	moveForwardBy(distance);
+}
+
+void RobotTrajectoryController::onRequestRotationMove(double rotation)
 {
 	rotateRobotTo(rotation);
-
-	// std::unique_lock<std::mutex> lock(m_mutex);
-	// m_stopGate.wait(lock, [this] { return m_stopped; });
-
-	// std::cout << "Starting movement\n";
-	moveForwardBy(distance);
 }
