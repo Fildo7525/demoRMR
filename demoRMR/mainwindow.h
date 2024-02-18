@@ -43,8 +43,10 @@ public:
 	int processThisLidar(LaserMeasurement laserData);
 
 	int processThisRobot(TKobukiData robotdata);
-	double rotationError();
+	double finalRotationError();
+	double localRotationError(QPair<double, double> point);
 	QPair<double, double> calculateTrajectory();
+	QPair<double, double> calculateTrajectoryTo(QPair<double, double> point);
 
 private:
 	void paintEvent(QPaintEvent *event); // Q_DECL_OVERRIDE;
@@ -80,7 +82,7 @@ private: signals:
 	void changeRotation(double rotation);
 
 public: signals:
-	void resultsReady(double distance, double rotaiton);
+	void resultsReady(double distance, double rotaiton, QVector<QPointF> points);
 
 private:
 
@@ -90,7 +92,9 @@ private:
 	LaserMeasurement copyOfLaserData;
 	std::string ipaddress;
 	Robot robot;
+
 	RobotTrajectoryController *m_trajectoryController;
+
 	TKobukiData robotdata;
 	int datacounter;
 

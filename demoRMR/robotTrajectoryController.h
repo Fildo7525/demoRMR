@@ -25,8 +25,14 @@ public:
 
 private:
 	bool isNear(double currentVelocity);
-	double distanceError();
-	double rotationError();
+	double finalDistanceError();
+	double localDistanceError();
+	double finalRotationError();
+	double localRotationError();
+
+private: signals:
+	void requestMovement(double distance);
+	void requestRotation(double rotation);
 
 public slots:
 	void stop();
@@ -35,7 +41,10 @@ public slots:
 
 	void onMoveForwardMove(double speed);
 	void onChangeRotationRotate(double speed);
-	void handleResults(double distance, double rotation);
+	void handleResults(double distance, double rotation, QVector<QPointF> points);
+
+	void onRequestMovementMove(double distance);
+	void onRequestRotationMove(double rotation);
 
 private:
 	Robot *m_robot;
@@ -46,12 +55,10 @@ private:
 	QTimer m_stoppingTimer;
 
 	std::shared_ptr<PIDController> m_controller;
+	QVector<QPointF> m_points;
 
 	bool isRotating;
 	bool m_stopped;
-
-	std::mutex m_mutex;
-	std::condition_variable m_stopGate;
 
 	double m_forwardSpeed;
 	double m_rotationSpeed;
