@@ -1,7 +1,9 @@
 #include "mainwindow.h"
+#include "qdebug.h"
 #include "qlineedit.h"
 #include "qnamespace.h"
 #include "qobject.h"
+#include "qpoint.h"
 #include "qpushbutton.h"
 #include "robotTrajectoryController.h"
 #include "ui_mainwindow.h"
@@ -205,22 +207,33 @@ static QVector<double> generateSequence(double min, double max)
 	return ret;
 }
 
+static QPointF computeLineParameters(QPointF p1, QPointF p2) {
+	QPointF line;
+	// Compute slope (a)
+	if (p1.x() != p2.x()) {
+		auto x = (p2.y() - p1.y()) / (p2.x() - p1.x());
+		line.setX(x);
+	} else {
+		// If the line is vertical, slope is infinity, so set a to a large value
+		line.setY(1e9);
+	}
+	// Compute intercept (b)
+	line.ry() = p1.y() - line.x() * p1.x();
+	return line;
+}
+
 void MainWindow::_calculateTrajectory()
 {
 	auto [distance, angle] = calculateTrajectory();
 
+	QPointF line = computeLineParameters({m_x, m_y}, {m_xTarget, m_yTarget});
+	qDebug() << "Line: " << line;
+
 	QVector<double> X = generateSequence(m_x, m_xTarget);
-	QVector<double> Y;
-
-	Y.reserve(X.size());
-	auto diff = (m_yTarget - m_y) / X.size();
-	for (int i = 1; i <= X.size(); i++) {
-		Y.push_back(m_y + i*diff);
-	}
-
 	QVector<QPointF> points;
-	for (int var = 0; var < X.size(); ++var) {
-		points.push_back({X[var], Y[var]});
+
+	for (const double &var : X) {
+		points.push_back({var, line.x() * var + line.y()});
 	}
 
 	qDebug() << "Points: " << points;

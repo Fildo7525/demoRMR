@@ -205,7 +205,6 @@ void RobotTrajectoryController::onTimeoutChangePosition()
 		if (!isRotating && finalDistanceError() > 0.1) {
 			if (m_points.size() > 1)
 				m_points.removeFirst();
-
 			qDebug() << m_points;
 			emit requestRotation(localRotationError());
 			// TODO: handle forward movement to the local endpoint.
