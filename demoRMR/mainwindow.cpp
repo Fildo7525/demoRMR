@@ -207,7 +207,8 @@ static QVector<double> generateSequence(double min, double max)
 	return ret;
 }
 
-static QPointF computeLineParameters(QPointF p1, QPointF p2) {
+static QPointF computeLineParameters(QPointF p1, QPointF p2)
+{
 	QPointF line;
 	// Compute slope (a)
 	if (p1.x() != p2.x()) {
