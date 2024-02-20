@@ -1,6 +1,17 @@
 #include "mainwindow.h"
+#include "qdebug.h"
+#include "qlineedit.h"
+#include "qnamespace.h"
+#include "qobject.h"
+#include "qpoint.h"
+#include "qpushbutton.h"
+#include "robotTrajectoryController.h"
 #include "ui_mainwindow.h"
 #include <QPainter>
+#include <cmath>
+#include <math.h>
+#include <QThread>
+#include <QDebug>
 #include <math.h>
 ///TOTO JE DEMO PROGRAM...AK SI HO NASIEL NA PC V LABAKU NEPREPISUJ NIC,ALE SKOPIRUJ SI MA NIEKAM DO INEHO FOLDERA
 /// AK HO MAS Z GITU A ROBIS NA LABAKOVOM PC, TAK SI HO VLOZ DO FOLDERA KTORY JE JASNE ODLISITELNY OD TVOJICH KOLEGOV
@@ -10,12 +21,23 @@
 /// AZ POTOM ZACNI ROBIT... AK TO NESPRAVIS, POJDU BODY DOLE... A NIE JEDEN,ALEBO DVA ALE BUDES RAD
 /// AK SA DOSTANES NA SKUSKU
 
+#define PI 3.14159
+#define TO_RADIANS PI/180.07
+#define SHORT_MAX 65'535
 
-MainWindow::MainWindow(QWidget *parent) :
-	QMainWindow(parent),
-	ui(new Ui::MainWindow)
+MainWindow::MainWindow(QWidget *parent)
+	: QMainWindow(parent)
+	, ui(new Ui::MainWindow)
+	, lastLeftEncoder(0)
+	, lastRightEncoder(0)
+	, m_fi(0)
+	, m_x(0)
+	, m_y(0)
+	, m_xTarget(0)
+	, m_yTarget(0)
+	, m_trajectoryThread(new QThread(this))
+	, m_controllerThread(new QThread(this))
 {
-
 	//tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
 	ipaddress="127.0.0.1";//192.168.1.11toto je na niektory realny robot.. na lokal budete davat "127.0.0.1"
   //  cap.open("http://192.168.1.11:8000/stream.mjpg");
@@ -26,17 +48,32 @@ MainWindow::MainWindow(QWidget *parent) :
 	actIndex=-1;
 	useCamera1=false;
 
+	// Object for managing the robot speed interactions.
+	m_trajectoryController = new RobotTrajectoryController(&robot, this);
 
+	// Creating all connections
+	connect(this, &MainWindow::moveForward, m_trajectoryController, &RobotTrajectoryController::onMoveForwardMove, Qt::QueuedConnection);
+	connect(this, &MainWindow::changeRotation, m_trajectoryController, &RobotTrajectoryController::onChangeRotationRotate, Qt::QueuedConnection);
 
+	connect(this, &MainWindow::resultsReady, m_trajectoryController, &RobotTrajectoryController::handleResults, Qt::QueuedConnection);
 
-	datacounter=0;
+	connect(ui->submitTargetButton, &QPushButton::clicked, this, &MainWindow::onSubmitButtonClicked, Qt::QueuedConnection);
 
+	// Starting threads
+	m_trajectoryThread->start();
+	m_controllerThread->start();
 
+	std::cout << __FUNCTION__ << " " << std::this_thread::get_id() << std::endl;
+
+	m_trajectoryController->moveToThread(m_controllerThread);
 }
 
 MainWindow::~MainWindow()
 {
+	m_controllerThread->exit(0);
+	m_trajectoryThread->exit(0);
 	delete ui;
+	delete m_trajectoryController;
 }
 
 void MainWindow::paintEvent(QPaintEvent *event)
@@ -96,23 +133,24 @@ void  MainWindow::setUiValues(double robotX,double robotY,double robotFi)
 int MainWindow::processThisRobot(TKobukiData robotdata)
 {
 
+	calculateOdometry(robotdata);
 
 	///tu mozete robit s datami z robota
 	/// ale nic vypoctovo narocne - to iste vlakno ktore cita data z robota
 	///teraz tu posielam rychlosti na zaklade toho co setne joystick a vypisujeme data z robota(kazdy 5ty krat. ale mozete skusit aj castejsie). vyratajte si polohu. a vypiste spravnu
 	/// tuto joystick cast mozete vklude vymazat,alebo znasilnit na vas regulator alebo ake mate pohnutky... kazdopadne, aktualne to blokuje gombiky cize tak
-	if(instance->count()>0)
-	{
-		if(forwardspeed==0 && rotationspeed!=0)
-			robot.setRotationSpeed(rotationspeed);
-		else if(forwardspeed!=0 && rotationspeed==0)
-			robot.setTranslationSpeed(forwardspeed);
-		else if((forwardspeed!=0 && rotationspeed!=0))
-			robot.setArcSpeed(forwardspeed,forwardspeed/rotationspeed);
-		else
-			robot.setTranslationSpeed(0);
-
-	}
+	// if(instance->count()>0)
+	// {
+	// 	if(forwardspeed==0 && rotationspeed!=0)
+	// 		robot.setRotationSpeed(rotationspeed);
+	// 	else if(forwardspeed!=0 && rotationspeed==0)
+	// 		robot.setTranslationSpeed(forwardspeed);
+	// 	else if((forwardspeed!=0 && rotationspeed!=0))
+	// 		robot.setArcSpeed(forwardspeed,forwardspeed/rotationspeed);
+	// 	else
+	// 		robot.setTranslationSpeed(0);
+	//
+	// }
 ///TU PISTE KOD... TOTO JE TO MIESTO KED NEVIETE KDE ZACAT,TAK JE TO NAOZAJ TU. AK AJ TAK NEVIETE, SPYTAJTE SA CVICIACEHO MA TU NATO STRING KTORY DA DO HLADANIA XXX
 
 	if(datacounter%5)
@@ -126,7 +164,7 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 				/// okno pocuva vo svojom slote a vasu premennu nastavi tak ako chcete. prikaz emit to presne takto spravi
 				/// viac o signal slotoch tu: https://doc.qt.io/qt-5/signalsandslots.html
 		///posielame sem nezmysli.. pohrajte sa nech sem idu zmysluplne veci
-		emit uiValuesChanged(robotdata.EncoderLeft,11,12);
+		emit uiValuesChanged(m_x, m_y, m_fi);
 		///toto neodporucam na nejake komplikovane struktury.signal slot robi kopiu dat. radsej vtedy posielajte
 		/// prazdny signal a slot bude vykreslovat strukturu (vtedy ju musite mat samozrejme ako member premmennu v mainwindow.ak u niekoho najdem globalnu premennu,tak bude cistit bludisko zubnou kefkou.. kefku dodam)
 		/// vtedy ale odporucam pouzit mutex, aby sa vam nestalo ze budete pocas vypisovania prepisovat niekde inde
@@ -165,6 +203,162 @@ int MainWindow::processThisCamera(cv::Mat cameraData)
 	updateLaserPicture=1;
 	return 0;
 }
+
+void MainWindow::calculateOdometry(const TKobukiData &robotdata)
+{
+	int diffLeftEnc = robotdata.EncoderLeft - lastLeftEncoder;
+	int diffRightEnc = robotdata.EncoderRight - lastRightEncoder;
+
+	if (lastRightEncoder > 60'000 && robotdata.EncoderRight < 1'000)
+		diffRightEnc += SHORT_MAX;
+	if (lastLeftEncoder > 60'000 && robotdata.EncoderLeft < 1'000)
+		diffLeftEnc += SHORT_MAX;
+
+	if (lastRightEncoder < 1'000 && robotdata.EncoderRight > 60'000)
+		diffRightEnc -= SHORT_MAX;
+	if (lastLeftEncoder < 1'000 && robotdata.EncoderLeft > 60'000)
+		diffLeftEnc -= SHORT_MAX;
+
+	auto leftEncDist = robot.tickToMeter * diffLeftEnc;
+	auto rightEncDist = robot.tickToMeter * diffRightEnc;
+
+	lastLeftEncoder = robotdata.EncoderLeft;
+	lastRightEncoder = robotdata.EncoderRight;
+
+	double l = (rightEncDist + leftEncDist) / 2.0;
+	{
+		m_mutex.lock();
+		m_fi = robotdata.GyroAngle / 100. * TO_RADIANS;
+		m_x += l * std::cos(m_fi);
+		m_y += l * std::sin(m_fi);
+		m_mutex.unlock();
+	}
+}
+
+static QVector<double> generateSequence(double min, double max)
+{
+	QVector<double> ret;
+
+	for (int var = min+1; var < (int)max; var+=2) {
+		ret.push_back(var);
+	}
+	ret.push_back(max);
+
+	return ret;
+}
+
+static QPointF computeLineParameters(QPointF p1, QPointF p2)
+{
+	QPointF line;
+	// Compute slope (a)
+	if (p1.x() != p2.x()) {
+		auto x = (p2.y() - p1.y()) / (p2.x() - p1.x());
+		line.setX(x);
+	} else {
+		// If the line is vertical, slope is infinity, so set a to a large value
+		line.setY(1e9);
+	}
+	// Compute intercept (b)
+	line.ry() = p1.y() - line.x() * p1.x();
+	return line;
+}
+
+void MainWindow::_calculateTrajectory()
+{
+	auto [distance, angle] = calculateTrajectory();
+
+	QPointF line = computeLineParameters({m_x, m_y}, {m_xTarget, m_yTarget});
+	qDebug() << "Line: " << line;
+
+	QVector<double> X = generateSequence(m_x, m_xTarget);
+	QVector<QPointF> points;
+
+	for (const double &var : X) {
+		points.push_back({var, line.x() * var + line.y()});
+	}
+
+	qDebug() << "Points: " << points;
+	emit resultsReady(distance, angle, points);
+}
+
+QPair<double, double> MainWindow::calculateTrajectory()
+{
+	// Get current position and orientation (actual values)
+	auto [distanceToTarget, angleToTarget] = calculateTrajectoryTo({m_xTarget, m_yTarget});
+
+	ui->distanceToTarget->setText(QString::number(distanceToTarget));
+	ui->angleToTarget->setText(QString::number(angleToTarget));
+
+	return {distanceToTarget, angleToTarget};
+}
+
+QPair<double, double> MainWindow::calculateTrajectoryTo(QPair<double, double> point)
+{
+	// Get current position and orientation (actual values)
+	double current_x = 0;
+	double current_y = 0;
+
+	{
+		m_mutex.lock();
+		current_x = m_x;
+		current_y = m_y;
+		m_mutex.unlock();
+	}
+
+	// Calculate angle to target
+	double angleToTarget = std::atan2(point.second - current_y, point.first - current_x);
+	double distanceToTarget = std::sqrt(
+		std::pow(point.second - current_y + point.first - current_x,
+				 2)
+		);
+
+	return {distanceToTarget, angleToTarget};
+}
+
+double MainWindow::finalRotationError()
+{
+	auto [dir, rot] = calculateTrajectory();
+	double diff, fi;
+	{
+		m_mutex.lock();
+		fi = m_fi;
+		m_mutex.unlock();
+	}
+
+	if (fi > PI/2 && rot < -PI/2) {
+		fi -= 2*PI;
+	}
+	if (fi < -PI/2 && rot > PI/2) {
+		fi += 2*PI;
+	}
+
+	diff = fi - rot;
+
+	return -diff;
+}
+
+double MainWindow::localRotationError(QPair<double, double> point)
+{
+	auto [dir, rot] = calculateTrajectoryTo(point);
+	double diff, fi;
+	{
+		m_mutex.lock();
+		fi = m_fi;
+		m_mutex.unlock();
+	}
+
+	if (fi > PI/2 && rot < -PI/2) {
+		fi -= 2*PI;
+	}
+	if (fi < -PI/2 && rot > PI/2) {
+		fi += 2*PI;
+	}
+
+	diff = fi - rot;
+
+	return -diff;
+}
+
 void MainWindow::on_pushButton_9_clicked() //start button
 {
 	//ziskanie joystickov
@@ -201,54 +395,66 @@ void MainWindow::on_pushButton_9_clicked() //start button
 void MainWindow::on_pushButton_2_clicked() //forward
 {
 	//pohyb dopredu
-	robot.setTranslationSpeed(500);
-
+	emit moveForward(500);
 }
 
 void MainWindow::on_pushButton_3_clicked() //back
 {
-	robot.setTranslationSpeed(-250);
-
+	emit moveForward(-250);
 }
 
 void MainWindow::on_pushButton_6_clicked() //left
 {
-robot.setRotationSpeed(3.14159/2);
-
+	emit changeRotation(3.14159/2);
 }
 
 void MainWindow::on_pushButton_5_clicked()//right
 {
-robot.setRotationSpeed(-3.14159/2);
-
+	emit changeRotation(-3.14159/2);
 }
 
 void MainWindow::on_pushButton_4_clicked() //stop
 {
-	robot.setTranslationSpeed(0);
-
+	emit moveForward(0);
 }
-
-
-
 
 void MainWindow::on_pushButton_clicked()
 {
-	if(useCamera1==true)
-	{
+	if(useCamera1==true) {
 		useCamera1=false;
-
 		ui->pushButton->setText("use camera");
 	}
-	else
-	{
+	else {
 		useCamera1=true;
-
 		ui->pushButton->setText("use laser");
 	}
 }
 
-void MainWindow::getNewFrame()
+void MainWindow::timeout()
 {
-
+	m_trajectoryController->setTranslationSpeed(0, true);
 }
+
+bool MainWindow::updateTarget(QLineEdit *lineEdit, double &target)
+{
+	bool ok = true;
+	double tmp = lineEdit->text().toDouble(&ok);
+	if (!ok) {
+		lineEdit->setText(QString::number(target));
+		return false;
+	}
+
+	target = tmp;
+	return true;
+}
+
+void MainWindow::onSubmitButtonClicked(bool clicked)
+{
+	bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
+	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
+
+	if (ok1 && ok2) {
+		_calculateTrajectory();
+	}
+}
+

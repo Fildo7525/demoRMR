@@ -80,9 +80,13 @@ INCLUDEPATH += /usr/include/opencv4/
 }
 
 
-SOURCES += main.cpp\
-        mainwindow.cpp
+SOURCES += main.cpp \
+        mainwindow.cpp \
+        pidcontroller.cpp \
+        robotTrajectoryController.cpp
 
-HEADERS  += mainwindow.h
+HEADERS  += mainwindow.h \
+            pidcontroller.h \
+            robotTrajectoryController.h
 
 FORMS    += mainwindow.ui
