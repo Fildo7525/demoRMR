@@ -31,16 +31,16 @@ private:
 	double localRotationError();
 
 public slots:
-	void stop();
-	void control();
-	void onTimeoutChangePosition();
+	void on_stoppingTimerTimeout_stop();
+	void on_accelerationTimerTimeout_control();
+	void on_positionTimerTimeout_changePosition();
 
 	void onMoveForwardMove(double speed);
 	void onChangeRotationRotate(double speed);
 	void handleResults(double distance, double rotation, QVector<QPointF> points);
 
-	void onRequestMovementMove(double distance);
-	void onRequestRotationMove(double rotation);
+	void on_requestMovement_move(double distance);
+	void on_requestRotation_move(double rotation);
 
 private:
 signals:

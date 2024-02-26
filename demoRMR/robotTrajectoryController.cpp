@@ -26,12 +26,12 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	m_stoppingTimer.setInterval(3'000);
 	m_stoppingTimer.setSingleShot(true);
 
-	connect(&m_stoppingTimer, &QTimer::timeout, this, &RobotTrajectoryController::stop, Qt::QueuedConnection);
-	connect(&m_accelerationTimer, &QTimer::timeout, this, &RobotTrajectoryController::control, Qt::QueuedConnection);
-	connect(&m_positionTimer, &QTimer::timeout, this, &RobotTrajectoryController::onTimeoutChangePosition, Qt::QueuedConnection);
+	connect(&m_stoppingTimer, &QTimer::timeout, this, &RobotTrajectoryController::on_stoppingTimerTimeout_stop, Qt::QueuedConnection);
+	connect(&m_accelerationTimer, &QTimer::timeout, this, &RobotTrajectoryController::on_accelerationTimerTimeout_control, Qt::QueuedConnection);
+	connect(&m_positionTimer, &QTimer::timeout, this, &RobotTrajectoryController::on_positionTimerTimeout_changePosition, Qt::QueuedConnection);
 
-	connect(this, &RobotTrajectoryController::requestMovement, this, &RobotTrajectoryController::onRequestMovementMove, Qt::QueuedConnection);
-	connect(this, &RobotTrajectoryController::requestRotation, this, &RobotTrajectoryController::onRequestRotationMove, Qt::QueuedConnection);
+	connect(this, &RobotTrajectoryController::requestMovement, this, &RobotTrajectoryController::on_requestMovement_move, Qt::QueuedConnection);
+	connect(this, &RobotTrajectoryController::requestRotation, this, &RobotTrajectoryController::on_requestRotation_move, Qt::QueuedConnection);
 }
 
 void RobotTrajectoryController::setTranslationSpeed(double velocity, bool stopPositionTimer, double accelerationRate)
@@ -152,7 +152,7 @@ double RobotTrajectoryController::localRotationError()
 	return win->localRotationError({ point.x(), point.y() });
 }
 
-void RobotTrajectoryController::stop()
+void RobotTrajectoryController::on_stoppingTimerTimeout_stop()
 {
 	m_forwardSpeed = 0;
 	m_rotationSpeed = 0;
@@ -166,7 +166,7 @@ void RobotTrajectoryController::stop()
 	m_stopped = true;
 }
 
-void RobotTrajectoryController::control()
+void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 {
 	if (isNear(m_forwardSpeed) || isNear(m_rotationSpeed)) {
 		m_accelerationTimer.stop();
@@ -185,7 +185,7 @@ void RobotTrajectoryController::control()
 	}
 }
 
-void RobotTrajectoryController::onTimeoutChangePosition()
+void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 {
 	double error;
 
@@ -243,12 +243,12 @@ void RobotTrajectoryController::handleResults(double distance, double rotation, 
 	rotateRobotTo(rotation);
 }
 
-void RobotTrajectoryController::onRequestMovementMove(double distance)
+void RobotTrajectoryController::on_requestMovement_move(double distance)
 {
 	moveForwardBy(distance);
 }
 
-void RobotTrajectoryController::onRequestRotationMove(double rotation)
+void RobotTrajectoryController::on_requestRotation_move(double rotation)
 {
 	rotateRobotTo(rotation);
 }
