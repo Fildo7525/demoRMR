@@ -25,10 +25,11 @@ public:
 
 	void setTranslationSpeed(double velocity, bool stopPositionTimer = false, double accelerationRate = 50);
 	void setRotationSpeed(double omega, bool stopPositionTimer = false, double accelerationRate = 0.1);
+	void setArcSpeed(double velocity, double omega, bool stopPositionTimer = false, double accelerationRate = 50, double omegaRate = 0.1);
 
 	void rotateRobotTo(double rotation);
 	void moveForwardBy(double distance);
-	void moveByArcTo(QPointF point);
+	void moveByArcTo(double distance, double rotation);
 
 private:
 	bool isNear(double currentVelocity);
@@ -41,6 +42,7 @@ public slots:
 	void on_stoppingTimerTimeout_stop();
 	void on_accelerationTimerTimeout_control();
 	void on_positionTimerTimeout_changePosition();
+	void on_arcTimerTimeout_changePosition();
 
 	void onMoveForwardMove(double speed);
 	void onChangeRotationRotate(double speed);
@@ -61,9 +63,12 @@ private:
 
 	QTimer m_accelerationTimer;
 	QTimer m_positionTimer;
+	QTimer m_arcTimer;
 	QTimer m_stoppingTimer;
 
 	std::shared_ptr<PIDController> m_controller;
+	std::shared_ptr<PIDController> m_rotationController;
+
 	QVector<QPointF> m_points;
 
 	MovementType m_movementType;
@@ -74,9 +79,10 @@ private:
 
 	double m_targetVelocity;
 	double m_accelerationRate;
+	double m_omegaRate;
 
 	double m_targetPosition;
-	double m_targetRotation;
+	double m_targetOmega;
 };
 
 #endif // ROBOTTRAJECTORYCONTROLLER_H

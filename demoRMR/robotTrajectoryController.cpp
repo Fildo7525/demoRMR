@@ -6,6 +6,7 @@
 #include "qtimer.h"
 #include <memory>
 #include <thread>
+#include <QDebug>
 
 RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *window, double timerInterval)
 	: QObject()
@@ -14,6 +15,8 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	, m_accelerationTimer(this)
 	, m_positionTimer(this)
 	, m_stoppingTimer(this)
+	, m_controller(nullptr)
+	, m_rotationController(nullptr)
 	, m_forwardSpeed(0)
 	, m_rotationSpeed(0)
 {
@@ -23,12 +26,16 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	m_positionTimer.setInterval(timerInterval);
 	m_positionTimer.setSingleShot(false);
 
+	m_arcTimer.setInterval(timerInterval);
+	m_arcTimer.setSingleShot(false);
+
 	m_stoppingTimer.setInterval(3'000);
 	m_stoppingTimer.setSingleShot(true);
 
 	connect(&m_stoppingTimer, &QTimer::timeout, this, &RobotTrajectoryController::on_stoppingTimerTimeout_stop, Qt::QueuedConnection);
 	connect(&m_accelerationTimer, &QTimer::timeout, this, &RobotTrajectoryController::on_accelerationTimerTimeout_control, Qt::QueuedConnection);
 	connect(&m_positionTimer, &QTimer::timeout, this, &RobotTrajectoryController::on_positionTimerTimeout_changePosition, Qt::QueuedConnection);
+	connect(&m_arcTimer, &QTimer::timeout, this, &RobotTrajectoryController::on_arcTimerTimeout_changePosition, Qt::QueuedConnection);
 
 	connect(this, &RobotTrajectoryController::requestMovement, this, &RobotTrajectoryController::on_requestMovement_move, Qt::QueuedConnection);
 	connect(this, &RobotTrajectoryController::requestRotation, this, &RobotTrajectoryController::on_requestRotation_move, Qt::QueuedConnection);
@@ -40,8 +47,10 @@ void RobotTrajectoryController::setTranslationSpeed(double velocity, bool stopPo
 	m_rotationSpeed = 0;
 	m_movementType = MovementType::Forward;
 	m_stoppingTimer.stop();
-	if (stopPositionTimer)
+	if (stopPositionTimer) {
 		m_positionTimer.stop();
+		m_arcTimer.stop();
+	}
 
 	m_targetVelocity = velocity;
 	m_accelerationRate = accelerationRate;
@@ -66,8 +75,10 @@ void RobotTrajectoryController::setRotationSpeed(double omega, bool stopPosition
 	m_movementType = MovementType::Rotation;
 	m_stoppingTimer.stop();
 
-	if (stopPositionTimer)
+	if (stopPositionTimer) {
 		m_positionTimer.stop();
+		m_arcTimer.stop();
+	}
 
 	m_targetVelocity = omega;
 	m_accelerationRate = accelerationRate;
@@ -86,6 +97,32 @@ void RobotTrajectoryController::setRotationSpeed(double omega, bool stopPosition
 	m_accelerationTimer.start();
 }
 
+void RobotTrajectoryController::setArcSpeed(double velocity, double omega, bool stopPositionTimer, double accelerationRate, double omegaRate)
+{
+	m_movementType = MovementType::Arc;
+	m_stoppingTimer.stop();
+
+	if (stopPositionTimer) {
+		m_positionTimer.stop();
+		m_arcTimer.stop();
+	}
+
+	m_targetVelocity = velocity;
+	m_targetOmega = omega;
+	m_accelerationRate = accelerationRate;
+	m_omegaRate = omegaRate;
+
+	if (m_targetVelocity < m_forwardSpeed) {
+		m_accelerationRate = -m_accelerationRate;
+	}
+
+	if (m_targetOmega < m_rotationSpeed) {
+		m_omegaRate = -m_omegaRate;
+	}
+
+	m_accelerationTimer.start();
+}
+
 void RobotTrajectoryController::rotateRobotTo(double rotation)
 {
 	m_movementType = MovementType::Rotation;
@@ -93,6 +130,7 @@ void RobotTrajectoryController::rotateRobotTo(double rotation)
 
 	m_accelerationTimer.stop();
 	m_stoppingTimer.stop();
+	m_arcTimer.stop();
 
 	m_controller = std::make_shared<PIDController>(1, 0, 0, rotation);
 	m_positionTimer.start();
@@ -105,14 +143,26 @@ void RobotTrajectoryController::moveForwardBy(double distance)
 
 	m_accelerationTimer.stop();
 	m_stoppingTimer.stop();
+	m_arcTimer.stop();
 
 	m_controller = std::make_shared<PIDController>(100, 5, 0, distance);
 	std::cout << "Starting position timer" << std::endl;
 	m_positionTimer.start();
 }
 
-void RobotTrajectoryController::moveByArcTo(QPointF point)
+void RobotTrajectoryController::moveByArcTo(double distance, double rotation)
 {
+	m_movementType = MovementType::Arc;
+	m_stopped = false;
+
+	m_accelerationTimer.stop();
+	m_stoppingTimer.stop();
+	m_positionTimer.stop();
+
+	m_controller = std::make_shared<PIDController>(1, 0, 0, distance);
+	m_rotationController = std::make_shared<PIDController>(100, 5, 0, rotation);
+
+	m_arcTimer.start();
 }
 
 bool RobotTrajectoryController::isNear(double currentVelocity)
@@ -171,6 +221,7 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 	if (isNear(m_forwardSpeed) || isNear(m_rotationSpeed)) {
 		m_accelerationTimer.stop();
 		m_stoppingTimer.start();
+		m_arcTimer.stop();
 		return;
 	}
 
@@ -182,6 +233,11 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 	else if (m_movementType == MovementType::Forward) {
 		m_forwardSpeed += m_accelerationRate;
 		m_robot->setTranslationSpeed(m_forwardSpeed);
+	}
+	else {
+		m_forwardSpeed += m_accelerationRate;
+		m_rotationSpeed += m_omegaRate;
+		m_robot->setArcSpeed(m_forwardSpeed, m_rotationSpeed);
 	}
 }
 
@@ -196,7 +252,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		error = localDistanceError();
 	}
 
-	std::cout << "Error: " << error << "\n";
+	qDebug() << "Error: " << error << "\n";
 	if (std::abs(error) < 0.1) {
 		qDebug() << "Error is less than 0.1. It's " << error;
 
@@ -228,6 +284,25 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 	}
 }
 
+void RobotTrajectoryController::on_arcTimerTimeout_changePosition()
+{
+	double distanceError = localDistanceError();
+	double rotationError = localRotationError();
+
+	qDebug() << "Error: distance:" << distanceError << " rotation: " << rotationError;
+	if (std::abs(distanceError) < 0.1 && std::abs(rotationError) < 0.1) {
+		qDebug() << "Error is less than 0.1: distance:" << distanceError << " rotation: " << rotationError;
+		on_stoppingTimerTimeout_stop();
+		return;
+	}
+
+	double d = m_controller->computeFromError(distanceError);
+	double omega = m_rotationController->computeFromError(rotationError);
+	qDebug() << "Akcny zasah: distance " << d << " omega: " << omega;
+
+	setArcSpeed(d, omega);
+}
+
 void RobotTrajectoryController::onMoveForwardMove(double speed)
 {
 	setTranslationSpeed(speed, true);
@@ -246,7 +321,7 @@ void RobotTrajectoryController::handleLinResults(double distance, double rotatio
 
 void RobotTrajectoryController::handleArcResults(double distance, double rotation)
 {
-	
+	moveByArcTo(distance, rotation);
 }
 
 void RobotTrajectoryController::on_requestMovement_move(double distance)
