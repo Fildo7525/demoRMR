@@ -118,14 +118,21 @@ void MainWindow::paintEvent(QPaintEvent *event)
 	}
 }
 
-
-/// toto je slot. niekde v kode existuje signal, ktory je prepojeny. pouziva sa napriklad (v tomto pripade) ak chcete dostat data z jedneho vlakna (robot) do ineho (ui)
-/// prepojenie signal slot je vo funkcii  on_pushButton_9_clicked
-void  MainWindow::setUiValues(double robotX,double robotY,double robotFi)
+///toto je calback na data z lidaru, ktory ste podhodili robotu vo funkcii on_pushButton_9_clicked
+/// vola sa ked dojdu nove data z lidaru
+int MainWindow::processThisLidar(LaserMeasurement laserData)
 {
-	 ui->lineEdit_2->setText(QString::number(robotX));
-	 ui->lineEdit_3->setText(QString::number(robotY));
-	 ui->lineEdit_4->setText(QString::number(robotFi));
+
+
+	memcpy( &copyOfLaserData,&laserData,sizeof(LaserMeasurement));
+	//tu mozete robit s datami z lidaru.. napriklad najst prekazky, zapisat do mapy. naplanovat ako sa prekazke vyhnut.
+	// ale nic vypoctovo narocne - to iste vlakno ktore cita data z lidaru
+	updateLaserPicture=1;
+	update();//tento prikaz prinuti prekreslit obrazovku.. zavola sa paintEvent funkcia
+
+
+	return 0;
+
 }
 
 ///toto je calback na data z robota, ktory ste podhodili robotu vo funkcii on_pushButton_9_clicked
@@ -176,21 +183,13 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 
 }
 
-///toto je calback na data z lidaru, ktory ste podhodili robotu vo funkcii on_pushButton_9_clicked
-/// vola sa ked dojdu nove data z lidaru
-int MainWindow::processThisLidar(LaserMeasurement laserData)
+/// toto je slot. niekde v kode existuje signal, ktory je prepojeny. pouziva sa napriklad (v tomto pripade) ak chcete dostat data z jedneho vlakna (robot) do ineho (ui)
+/// prepojenie signal slot je vo funkcii  on_pushButton_9_clicked
+void  MainWindow::setUiValues(double robotX,double robotY,double robotFi)
 {
-
-
-	memcpy( &copyOfLaserData,&laserData,sizeof(LaserMeasurement));
-	//tu mozete robit s datami z lidaru.. napriklad najst prekazky, zapisat do mapy. naplanovat ako sa prekazke vyhnut.
-	// ale nic vypoctovo narocne - to iste vlakno ktore cita data z lidaru
-	updateLaserPicture=1;
-	update();//tento prikaz prinuti prekreslit obrazovku.. zavola sa paintEvent funkcia
-
-
-	return 0;
-
+	 ui->lineEdit_2->setText(QString::number(robotX));
+	 ui->lineEdit_3->setText(QString::number(robotY));
+	 ui->lineEdit_4->setText(QString::number(robotFi));
 }
 
 ///toto je calback na data z kamery, ktory ste podhodili robotu vo funkcii on_pushButton_9_clicked

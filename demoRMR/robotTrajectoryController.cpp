@@ -111,6 +111,11 @@ void RobotTrajectoryController::moveForwardBy(double distance)
 	m_positionTimer.start();
 }
 
+void RobotTrajectoryController::moveByArcTo(QPointF point)
+{
+
+}
+
 bool RobotTrajectoryController::isNear(double currentVelocity)
 {
 	return std::abs(currentVelocity - m_targetVelocity) <= std::abs(m_accelerationRate/2.);
@@ -133,19 +138,19 @@ double RobotTrajectoryController::localDistanceError()
 	return distance;
 }
 
+double RobotTrajectoryController::finalRotationError()
+{
+	MainWindow *win = qobject_cast<MainWindow*>(m_mainWindow);
+	std::cout << "Rotation error detection\n";
+	return win->finalRotationError();
+}
+
 double RobotTrajectoryController::localRotationError()
 {
 	QPointF point = m_points.first();
 
 	MainWindow *win = qobject_cast<MainWindow*>(m_mainWindow);
 	return win->localRotationError({point.x(), point.y()});
-}
-
-double RobotTrajectoryController::finalRotationError()
-{
-	MainWindow *win = qobject_cast<MainWindow*>(m_mainWindow);
-	std::cout << "Rotation error detection\n";
-	return win->finalRotationError();
 }
 
 void RobotTrajectoryController::stop()

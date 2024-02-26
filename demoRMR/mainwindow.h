@@ -47,13 +47,6 @@ class MainWindow : public QMainWindow
 	Q_OBJECT
 
 public:
-	bool useCamera1;
-  //  cv::VideoCapture cap;
-
-	int actIndex;
-	//	cv::Mat frame[3];
-
-	cv::Mat frame[3];
 	explicit MainWindow(QWidget *parent = 0);
 	~MainWindow();
 
@@ -105,6 +98,11 @@ public: signals:
 	void resultsReady(double distance, double rotaiton, QVector<QPointF> points);
 
 private:
+	bool useCamera1;
+	//  cv::VideoCapture cap;
+	int actIndex;
+	//	cv::Mat frame[3];
+	cv::Mat frame[3];
 
 	//--skuste tu nic nevymazat... pridavajte co chcete, ale pri odoberani by sa mohol stat nejaky drobny problem, co bude vyhadzovat chyby
 	Ui::MainWindow *ui;

@@ -22,6 +22,7 @@ public:
 
 	void rotateRobotTo(double rotation);
 	void moveForwardBy(double distance);
+	void moveByArcTo(QPointF point);
 
 private:
 	bool isNear(double currentVelocity);
@@ -29,10 +30,6 @@ private:
 	double localDistanceError();
 	double finalRotationError();
 	double localRotationError();
-
-private: signals:
-	void requestMovement(double distance);
-	void requestRotation(double rotation);
 
 public slots:
 	void stop();
@@ -46,6 +43,9 @@ public slots:
 	void onRequestMovementMove(double distance);
 	void onRequestRotationMove(double rotation);
 
+private: signals:
+	void requestMovement(double distance);
+	void requestRotation(double rotation);
 private:
 	Robot *m_robot;
 	QObject *m_mainWindow;
