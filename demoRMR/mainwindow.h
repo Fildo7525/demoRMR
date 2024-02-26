@@ -81,7 +81,8 @@ private slots:
 
 	void on_pushButton_clicked();
 	bool updateTarget(QLineEdit *lineEdit, double &controller);
-	void onSubmitButtonClicked(bool clicked);
+	void onLinSubmitButtonClicked(bool clicked);
+	void onArcSubmitButtonClicked(bool clicked);
 
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);
@@ -97,7 +98,8 @@ signals:
 
 public:
 signals:
-	void resultsReady(double distance, double rotaiton, QVector<QPointF> points);
+	void linResultsReady(double distance, double rotaiton, QVector<QPointF> points);
+	void arcResultsReady(double distance, double rotaiton);
 
 private:
 	bool useCamera1;

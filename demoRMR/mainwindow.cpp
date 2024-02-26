@@ -55,9 +55,11 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(this, &MainWindow::moveForward, m_trajectoryController, &RobotTrajectoryController::onMoveForwardMove, Qt::QueuedConnection);
 	connect(this, &MainWindow::changeRotation, m_trajectoryController, &RobotTrajectoryController::onChangeRotationRotate, Qt::QueuedConnection);
 
-	connect(this, &MainWindow::resultsReady, m_trajectoryController, &RobotTrajectoryController::handleResults, Qt::QueuedConnection);
+	connect(this, &MainWindow::linResultsReady, m_trajectoryController, &RobotTrajectoryController::handleLinResults, Qt::QueuedConnection);
+	connect(this, &MainWindow::arcResultsReady, m_trajectoryController, &RobotTrajectoryController::handleArcResults, Qt::QueuedConnection);
 
-	connect(ui->submitTargetButton, &QPushButton::clicked, this, &MainWindow::onSubmitButtonClicked, Qt::QueuedConnection);
+	connect(ui->linSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onLinSubmitButtonClicked, Qt::QueuedConnection);
+	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
 
 	// Starting threads
 	m_trajectoryThread->start();
@@ -270,7 +272,7 @@ void MainWindow::_calculateTrajectory()
 	}
 
 	qDebug() << "Points: " << points;
-	emit resultsReady(distance, angle, points);
+	emit linResultsReady(distance, angle, points);
 }
 
 QPair<double, double> MainWindow::calculateTrajectory()
@@ -438,7 +440,7 @@ bool MainWindow::updateTarget(QLineEdit *lineEdit, double &target)
 	return true;
 }
 
-void MainWindow::onSubmitButtonClicked(bool clicked)
+void MainWindow::onLinSubmitButtonClicked(bool clicked)
 {
 	bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
 	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
@@ -447,3 +449,15 @@ void MainWindow::onSubmitButtonClicked(bool clicked)
 		_calculateTrajectory();
 	}
 }
+
+void MainWindow::onArcSubmitButtonClicked(bool clicked)
+{
+	bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
+	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
+
+	if (ok1 && ok2) {
+		auto [distance, angle] = calculateTrajectory();
+		emit arcResultsReady(distance, angle);
+	}
+}
+
