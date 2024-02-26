@@ -7,7 +7,8 @@ PIDController::PIDController(double p, double i, double d, double target)
 	, m_target(target)
 	, m_integral(0)
 	, m_prev_error(0)
-{}
+{
+}
 
 double PIDController::compute(double current)
 {

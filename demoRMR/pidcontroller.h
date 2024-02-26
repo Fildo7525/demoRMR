@@ -5,16 +5,15 @@
 #include <memory>
 
 // PID Controller class
-class PIDController
-	: public QObject
+class PIDController : public QObject
 {
 	Q_OBJECT
 private:
-	double m_kp; // Proportional gain
-	double m_ki; // Integral gain
-	double m_kd; // Derivative gain
-	double m_target; // Target position
-	double m_integral; // Integral term
+	double m_kp;		 // Proportional gain
+	double m_ki;		 // Integral gain
+	double m_kd;		 // Derivative gain
+	double m_target;	 // Target position
+	double m_integral;	 // Integral term
 	double m_prev_error; // Previous error
 
 public:

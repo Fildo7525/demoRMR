@@ -17,7 +17,7 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	, m_forwardSpeed(0)
 	, m_rotationSpeed(0)
 {
-	m_accelerationTimer.setInterval(timerInterval/2);
+	m_accelerationTimer.setInterval(timerInterval / 2);
 	m_accelerationTimer.setSingleShot(false);
 
 	m_positionTimer.setInterval(timerInterval);
@@ -53,7 +53,7 @@ void RobotTrajectoryController::setTranslationSpeed(double velocity, bool stopPo
 	}
 
 	if (m_targetVelocity < m_forwardSpeed) {
-		m_accelerationRate = - m_accelerationRate;
+		m_accelerationRate = -m_accelerationRate;
 	}
 
 	m_accelerationTimer.start();
@@ -79,7 +79,7 @@ void RobotTrajectoryController::setRotationSpeed(double omega, bool stopPosition
 	}
 
 	if (m_targetVelocity < m_rotationSpeed) {
-		m_accelerationRate = - m_accelerationRate;
+		m_accelerationRate = -m_accelerationRate;
 	}
 
 	//std::cout << "Rotation Speed was set\n";
@@ -113,17 +113,16 @@ void RobotTrajectoryController::moveForwardBy(double distance)
 
 void RobotTrajectoryController::moveByArcTo(QPointF point)
 {
-
 }
 
 bool RobotTrajectoryController::isNear(double currentVelocity)
 {
-	return std::abs(currentVelocity - m_targetVelocity) <= std::abs(m_accelerationRate/2.);
+	return std::abs(currentVelocity - m_targetVelocity) <= std::abs(m_accelerationRate / 2.);
 }
 
 double RobotTrajectoryController::finalDistanceError()
 {
-	MainWindow *win = qobject_cast<MainWindow*>(m_mainWindow);
+	MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
 	auto [distance, rotation] = win->calculateTrajectory();
 	return distance;
 }
@@ -132,15 +131,15 @@ double RobotTrajectoryController::localDistanceError()
 {
 	QPointF point = m_points.first();
 
-	MainWindow *win = qobject_cast<MainWindow*>(m_mainWindow);
-	auto [distance, rotation] = win->calculateTrajectoryTo({point.x(), point.y()});
+	MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
+	auto [distance, rotation] = win->calculateTrajectoryTo({ point.x(), point.y() });
 
 	return distance;
 }
 
 double RobotTrajectoryController::finalRotationError()
 {
-	MainWindow *win = qobject_cast<MainWindow*>(m_mainWindow);
+	MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
 	std::cout << "Rotation error detection\n";
 	return win->finalRotationError();
 }
@@ -149,8 +148,8 @@ double RobotTrajectoryController::localRotationError()
 {
 	QPointF point = m_points.first();
 
-	MainWindow *win = qobject_cast<MainWindow*>(m_mainWindow);
-	return win->localRotationError({point.x(), point.y()});
+	MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
+	return win->localRotationError({ point.x(), point.y() });
 }
 
 void RobotTrajectoryController::stop()

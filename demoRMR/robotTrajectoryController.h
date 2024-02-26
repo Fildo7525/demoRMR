@@ -10,8 +10,7 @@
 #include <condition_variable>
 #include <memory>
 
-class RobotTrajectoryController
-	: public QObject
+class RobotTrajectoryController : public QObject
 {
 	Q_OBJECT
 public:
@@ -43,9 +42,11 @@ public slots:
 	void onRequestMovementMove(double distance);
 	void onRequestRotationMove(double rotation);
 
-private: signals:
+private:
+signals:
 	void requestMovement(double distance);
 	void requestRotation(double rotation);
+
 private:
 	Robot *m_robot;
 	QObject *m_mainWindow;

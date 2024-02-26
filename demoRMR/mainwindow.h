@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <QTimer>
 #ifdef _WIN32
-#include<windows.h>
+#include <windows.h>
 #endif
 #include "pidcontroller.h"
 #include "qlineedit.h"
@@ -84,17 +84,19 @@ private slots:
 	void onSubmitButtonClicked(bool clicked);
 
 public slots:
-	void setUiValues(double robotX,double robotY,double robotFi);
+	void setUiValues(double robotX, double robotY, double robotFi);
 	void timeout();
 
-private: signals:
-	void uiValuesChanged(double newrobotX,double newrobotY,double newrobotFi); ///toto nema telo
+private:
+signals:
+	void uiValuesChanged(double newrobotX, double newrobotY, double newrobotFi); ///toto nema telo
 	void startGuiding();
 
 	void moveForward(double speed);
 	void changeRotation(double rotation);
 
-public: signals:
+public:
+signals:
 	void resultsReady(double distance, double rotaiton, QVector<QPointF> points);
 
 private:
@@ -133,7 +135,7 @@ private:
 	QThread *m_controllerThread;
 	QMutex m_mutex;
 
-	double forwardspeed; // mm/s
+	double forwardspeed;  // mm/s
 	double rotationspeed; // omega/s
 };
 
