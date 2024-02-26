@@ -38,7 +38,7 @@ void RobotTrajectoryController::setTranslationSpeed(double velocity, bool stopPo
 {
 	std::cout << __FUNCTION__ << " " << std::this_thread::get_id() << std::endl;
 	m_rotationSpeed = 0;
-	isRotating = false;
+	m_movementType = MovementType::Forward;
 	m_stoppingTimer.stop();
 	if (stopPositionTimer)
 		m_positionTimer.stop();
@@ -63,7 +63,7 @@ void RobotTrajectoryController::setRotationSpeed(double omega, bool stopPosition
 {
 	// std::cout << "setting rotation Speed\n";
 	m_forwardSpeed = 0;
-	isRotating = true;
+	m_movementType = MovementType::Rotation;
 	m_stoppingTimer.stop();
 
 	if (stopPositionTimer)
@@ -88,7 +88,7 @@ void RobotTrajectoryController::setRotationSpeed(double omega, bool stopPosition
 
 void RobotTrajectoryController::rotateRobotTo(double rotation)
 {
-	isRotating = true;
+	m_movementType = MovementType::Rotation;
 	m_stopped = false;
 
 	m_accelerationTimer.stop();
@@ -100,7 +100,7 @@ void RobotTrajectoryController::rotateRobotTo(double rotation)
 
 void RobotTrajectoryController::moveForwardBy(double distance)
 {
-	isRotating = false;
+	m_movementType = MovementType::Forward;
 	m_stopped = false;
 
 	m_accelerationTimer.stop();
@@ -174,12 +174,12 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 		return;
 	}
 
-	if (isRotating) {
+	if (m_movementType == MovementType::Rotation) {
 		m_rotationSpeed += m_accelerationRate;
 		std::cout << "setting Robot rotation speed to " << m_rotationSpeed << std::endl;
 		m_robot->setRotationSpeed(m_rotationSpeed);
 	}
-	else {
+	else if (m_movementType == MovementType::Forward) {
 		m_forwardSpeed += m_accelerationRate;
 		m_robot->setTranslationSpeed(m_forwardSpeed);
 	}
@@ -189,10 +189,10 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 {
 	double error;
 
-	if (isRotating) {
+	if (m_movementType == MovementType::Rotation) {
 		error = localRotationError();
 	}
-	else {
+	else if (m_movementType == MovementType::Forward) {
 		error = localDistanceError();
 	}
 
@@ -200,18 +200,16 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 	if (std::abs(error) < 0.1) {
 		qDebug() << "Error is less than 0.1. It's " << error;
 
-		stop();
+		on_stoppingTimerTimeout_stop();
 		qDebug() << m_points;
-		if (isRotating) {
-			// TODO: handle rotating to the local endpoint.
+		if (m_movementType == MovementType::Rotation) {
 			emit requestMovement(localDistanceError());
 		}
-		if (!isRotating && finalDistanceError() > 0.1) {
+		else if (m_movementType == MovementType::Forward && finalDistanceError() > 0.1) {
 			if (m_points.size() > 1)
 				m_points.removeFirst();
 			qDebug() << m_points;
 			emit requestRotation(localRotationError());
-			// TODO: handle forward movement to the local endpoint.
 		}
 		return;
 	}
@@ -219,11 +217,14 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 	double u = m_controller->computeFromError(error);
 	std::cout << "Akcny zasah: " << u << std::endl;
 
-	if (isRotating) {
+	if (m_movementType == MovementType::Rotation) {
 		setRotationSpeed(u);
 	}
-	else {
+	else if (m_movementType == MovementType::Forward) {
 		setTranslationSpeed(u);
+	}
+	else {
+		qDebug() << "Arc movement type";
 	}
 }
 
@@ -237,10 +238,15 @@ void RobotTrajectoryController::onChangeRotationRotate(double speed)
 	setRotationSpeed(speed, true);
 }
 
-void RobotTrajectoryController::handleResults(double distance, double rotation, QVector<QPointF> points)
+void RobotTrajectoryController::handleLinResults(double distance, double rotation, QVector<QPointF> points)
 {
 	m_points = points;
 	rotateRobotTo(rotation);
+}
+
+void RobotTrajectoryController::handleArcResults(double distance, double rotation)
+{
+	
 }
 
 void RobotTrajectoryController::on_requestMovement_move(double distance)

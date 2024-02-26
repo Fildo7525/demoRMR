@@ -13,6 +13,13 @@
 class RobotTrajectoryController : public QObject
 {
 	Q_OBJECT
+
+	enum class MovementType {
+		Forward,
+		Rotation,
+		Arc
+	};
+
 public:
 	RobotTrajectoryController(Robot *robot, QObject *window, double timerInterval = 100);
 
@@ -37,7 +44,8 @@ public slots:
 
 	void onMoveForwardMove(double speed);
 	void onChangeRotationRotate(double speed);
-	void handleResults(double distance, double rotation, QVector<QPointF> points);
+	void handleLinResults(double distance, double rotation, QVector<QPointF> points);
+	void handleArcResults(double distance, double rotation);
 
 	void on_requestMovement_move(double distance);
 	void on_requestRotation_move(double rotation);
@@ -58,7 +66,7 @@ private:
 	std::shared_ptr<PIDController> m_controller;
 	QVector<QPointF> m_points;
 
-	bool isRotating;
+	MovementType m_movementType;
 	bool m_stopped;
 
 	double m_forwardSpeed;
