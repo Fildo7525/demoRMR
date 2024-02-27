@@ -5,7 +5,6 @@
 #include "qnamespace.h"
 #include "qtimer.h"
 #include <memory>
-#include <thread>
 #include <QDebug>
 
 RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *window, double timerInterval)
@@ -43,7 +42,7 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 
 void RobotTrajectoryController::setTranslationSpeed(double velocity, bool stopPositionTimer, double accelerationRate)
 {
-	std::cout << __FUNCTION__ << " " << std::this_thread::get_id() << std::endl;
+	std::cout << __FUNCTION__ << " velocity: " << velocity << std::endl;
 	m_rotationSpeed = 0;
 	m_movementType = MovementType::Forward;
 	m_stoppingTimer.stop();
@@ -227,11 +226,12 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 
 	if (m_movementType == MovementType::Rotation) {
 		m_rotationSpeed += m_accelerationRate;
-		std::cout << "setting Robot rotation speed to " << m_rotationSpeed << std::endl;
+		qDebug() << "setting Robot rotation speed to " << m_rotationSpeed;
 		m_robot->setRotationSpeed(m_rotationSpeed);
 	}
 	else if (m_movementType == MovementType::Forward) {
 		m_forwardSpeed += m_accelerationRate;
+		qDebug() << "setting Robot forward speed to " << m_forwardSpeed;
 		m_robot->setTranslationSpeed(m_forwardSpeed);
 	}
 	else {
