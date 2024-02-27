@@ -139,6 +139,9 @@ private:
 
 	double forwardspeed;  // mm/s
 	double rotationspeed; // omega/s
+
+	bool m_robotStartupLocation;
+	double m_fiCorrection;
 };
 
 #endif // MAINWINDOW_H

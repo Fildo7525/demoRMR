@@ -37,10 +37,13 @@ MainWindow::MainWindow(QWidget *parent)
 	, m_yTarget(0)
 	, m_trajectoryThread(new QThread(this))
 	, m_controllerThread(new QThread(this))
+	, m_robotStartupLocation(false)
 {
 	//tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
-	ipaddress = "127.0.0.1"; //192.168.1.11toto je na niektory realny robot.. na lokal budete davat "127.0.0.1"
+	ipaddress = "127.0.0.1"; //192.168.1.12 toto je na niektory realny robot.. na lokal budete davat "127.0.0.1"
 							 //  cap.open("http://192.168.1.11:8000/stream.mjpg");
+	// ROBOT IP
+	// ipaddress = "192.168.1.12";
 	ui->setupUi(this);
 	datacounter = 0;
 	//  timer = new QTimer(this);
@@ -221,9 +224,18 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 	double l = (rightEncDist + leftEncDist) / 2.0;
 	{
 		m_mutex.lock();
-		m_fi = robotdata.GyroAngle / 100. * TO_RADIANS;
+		// qDebug() << "Corrections:\n\tX: " << m_xCorrection << "\n\tY: " << m_yCorrection << "\n\tFi: " << m_fiCorrection;
+		m_fi = robotdata.GyroAngle / 100. * TO_RADIANS - m_fiCorrection;
 		m_x += l * std::cos(m_fi);
 		m_y += l * std::sin(m_fi);
+
+		if (!m_robotStartupLocation && datacounter % 5) {
+			m_x -= m_x;
+			m_y -= m_y;
+			m_fiCorrection = m_fi;
+			m_robotStartupLocation = true;
+		}
+
 		m_mutex.unlock();
 	}
 }
@@ -301,7 +313,7 @@ QPair<double, double> MainWindow::calculateTrajectoryTo(QPair<double, double> po
 
 	// Calculate angle to target
 	double angleToTarget = std::atan2(point.second - current_y, point.first - current_x);
-	double distanceToTarget = std::sqrt(std::pow(point.second - current_y + point.first - current_x, 2));
+	double distanceToTarget = std::sqrt(std::pow(point.second - current_y, 2) + std::pow(point.first - current_x, 2));
 
 	return { distanceToTarget, angleToTarget };
 }
@@ -366,7 +378,7 @@ void MainWindow::on_pushButton_9_clicked() //start button
 							std::bind(&MainWindow::processThisLidar, this, std::placeholders::_1));
 	robot.setRobotParameters(ipaddress, 53000, 5300, std::bind(&MainWindow::processThisRobot, this, std::placeholders::_1));
 	//---simulator ma port 8889, realny robot 8000
-	robot.setCameraParameters("http://" + ipaddress + ":8889/stream.mjpg", std::bind(&MainWindow::processThisCamera, this, std::placeholders::_1));
+	robot.setCameraParameters("http://" + ipaddress + ":8000/stream.mjpg", std::bind(&MainWindow::processThisCamera, this, std::placeholders::_1));
 
 	///ked je vsetko nasetovane tak to tento prikaz spusti (ak nieco nieje setnute,tak to normalne nenastavi.cize ak napr nechcete kameru,vklude vsetky info o nej vymazte)
 	robot.robotStart();
