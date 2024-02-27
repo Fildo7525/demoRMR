@@ -243,18 +243,21 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 
 void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 {
-	double error;
+	static double error, maxCorrection;
 
 	if (m_movementType == MovementType::Rotation) {
 		error = localRotationError();
+		maxCorrection = 0.1;
 	}
 	else if (m_movementType == MovementType::Forward) {
 		error = localDistanceError();
+		auto rotError = localRotationError();
+		maxCorrection = std::abs((std::sin(rotError) * error) * 1.1);
 	}
 
-	qDebug() << "Error: " << error << "\n";
-	if (std::abs(error) < 0.1) {
-		qDebug() << "Error is less than 0.1. It's " << error;
+	qDebug() << "Error: " << error << " maxCorrection: " << maxCorrection;
+	if (std::abs(error) < maxCorrection) {
+		qDebug() << "Error is less than 0.1. It's " << maxCorrection;
 
 		on_stoppingTimerTimeout_stop();
 		qDebug() << m_points;
@@ -270,18 +273,22 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		return;
 	}
 
-	double u = m_controller->computeFromError(error);
-	std::cout << "Akcny zasah: " << u << std::endl;
-
+	double u = 0;
 	if (m_movementType == MovementType::Rotation) {
+		u = m_controller->computeFromError(error);
+		qDebug() << "Akcny zasah: " << u;
 		setRotationSpeed(u);
 	}
 	else if (m_movementType == MovementType::Forward) {
+		u = m_controller->computeFromError(error, true);
+		qDebug() << "Akcny zasah: " << u;
 		setTranslationSpeed(u);
 	}
 	else {
 		qDebug() << "Arc movement type";
 	}
+
+	qDebug() << "Akcny zasah: " << u;
 }
 
 void RobotTrajectoryController::on_arcTimerTimeout_changePosition()
