@@ -23,7 +23,6 @@
 /// AK SA DOSTANES NA SKUSKU
 
 #define PI 3.14159
-#define TO_RADIANS PI / 180.07
 #define SHORT_MAX 65'535
 
 MainWindow::MainWindow(QWidget *parent)
@@ -230,12 +229,12 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 		m_mutex.lock();
 		// qDebug() << "Corrections:\n\tX: " << m_xCorrection << "\n\tY: " << m_yCorrection << "\n\tFi: " << m_fiCorrection;
 		m_fi = robotdata.GyroAngle / 100. * TO_RADIANS - m_fiCorrection;
-		m_x += l * std::cos(m_fi);
-		m_y += l * std::sin(m_fi);
+		m_x = m_x + l * std::cos(m_fi);
+		m_y = m_y + l * std::sin(m_fi);
 
 		if (!m_robotStartupLocation && datacounter % 5) {
-			m_x -= m_x;
-			m_y -= m_y;
+			m_x = 0;
+			m_y = 0;
 			m_fiCorrection = m_fi;
 			m_robotStartupLocation = true;
 		}

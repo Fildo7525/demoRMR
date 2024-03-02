@@ -129,9 +129,9 @@ private:
 
 	int lastLeftEncoder;
 	int lastRightEncoder;
-	double m_fi;
-	double m_x;
-	double m_y;
+	std::atomic<double> m_fi;
+	std::atomic<double> m_x;
+	std::atomic<double> m_y;
 
 	double m_xTarget;
 	double m_yTarget;

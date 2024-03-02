@@ -4,6 +4,7 @@
 #include "qdebug.h"
 #include "qnamespace.h"
 #include "qtimer.h"
+#include <fstream>
 #include <memory>
 #include <QDebug>
 
@@ -18,7 +19,8 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	, m_rotationController(nullptr)
 	, m_forwardSpeed(0)
 	, m_rotationSpeed(0)
-	, m_map(200, std::vector<bool>(200, false))
+	, m_map(300, std::vector<bool>(300, false))
+	, m_fileWriteCounter(0)
 {
 	m_accelerationTimer.setInterval(timerInterval);
 	m_accelerationTimer.setSingleShot(false);
@@ -328,25 +330,40 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 	double robotX = win->m_x;
 	double robotY = win->m_y;
 
-	// double distance = laserData.Data[0].scanDistance / 20.;
-	// double x = robotX + distance * std::cos(laserData.Data[0].scanAngle + robotAngle);
-	// double y = robotY + distance * std::sin(laserData.Data[0].scanAngle + robotAngle);
-	// qDebug() << "Scan distance: " << distance << " x: " << x << " y: " << y;
-	for (size_t i = 0; i < laserData.numberOfScans; i++) {
-		double distance = laserData.Data[i].scanDistance / 20.;
+	if (m_movementType == MovementType::Rotation) {
+		return;
+	}
+
+	if (m_fileWriteCounter % 5 == 0) {
+		m_laserMapFile.open("laserData.txt", std::ios::out);
+	}
+
+	for (size_t i = 0; i < laserData.numberOfScans; i += 5) {
+		double distance = laserData.Data[i].scanDistance / 60.;
 		if (distance < m_robot->b / 2.) {
 			// The laser did not reach the wall.
 			continue;
 		}
 
-		double x = robotX + distance * std::cos(laserData.Data[i].scanAngle + robotAngle);
-		double y = robotY + distance * std::sin(laserData.Data[i].scanAngle + robotAngle);
-		// qDebug() << "x: " << (int) (x + m_map[0].size()/2) << " y: " << (int) (y + m_map.size()/2);
-		x += m_map[0].size()/2;
-		y += m_map.size()/2;
+		double x = robotX/60. + distance * std::cos(laserData.Data[i].scanAngle * TO_RADIANS + robotAngle);
+		double y = robotY/60. + distance * std::sin(laserData.Data[i].scanAngle * TO_RADIANS + robotAngle);
+
+		x += int(m_map[0].size() / 2);
+		y += int(m_map.size() / 2);
+
+		qDebug() << "x: " << (int) (x + int(m_map[0].size() / 2)) << " y: " << (int) (y + int(m_map.size() / 2));
+
 		m_map[(int)(x)][(int)(y)] = true;
 	}
-	// std::cout << m_map;
+
+	if (m_fileWriteCounter % 5 == 0) {
+		qDebug() << "Laser data ready";
+		m_laserMapFile << m_map;
+		m_laserMapFile.close();
+	}
+
+	m_fileWriteCounter++;
+	qDebug() << "Counter: " << m_fileWriteCounter;
 }
 
 std::ostream &operator<<(std::ostream &os, const RobotTrajectoryController::Map &map)

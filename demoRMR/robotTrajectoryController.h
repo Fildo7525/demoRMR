@@ -9,6 +9,7 @@
 #include <QThread>
 #include <memory>
 
+#define TO_RADIANS 3.14159 / 180.0
 class RobotTrajectoryController : public QObject
 {
 	Q_OBJECT
@@ -99,6 +100,8 @@ private:
 	double m_targetPosition;
 	double m_targetOmega;
 
+	std::ofstream m_laserMapFile;
+	int m_fileWriteCounter;
 	Map m_map;
 };
 
