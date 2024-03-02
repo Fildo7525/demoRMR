@@ -6,36 +6,19 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
-#include "pidcontroller.h"
 #include "qlineedit.h"
 #include "qthread.h"
 #include "robot.h"
 #include "robotTrajectoryController.h"
 #include <QJoysticks.h>
 #include <QMutex>
-#include <chrono>
-#include <iostream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/utility.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/videoio.hpp>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/types.h>
-#include <vector>
-//#include "ckobuki.h"
-//#include "ckobuki.h"
-//#include "rplidar.h"
-//#include "rplidar.h"
-//#include<arpa/inet.h>
-//#include<arpa/inet.h>
-//#include<sys/socket.h>
-//#include<sys/socket.h>
-//#include<unistd.h>
-//#include<unistd.h>
 
 namespace Ui {
 class MainWindow;

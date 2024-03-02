@@ -1,12 +1,11 @@
-#include "robotTrajectoryController.h"
 #include "mainwindow.h"
 #include "pidcontroller.h"
-#include "qdebug.h"
 #include "qnamespace.h"
-#include "qtimer.h"
+#include "robotTrajectoryController.h"
+#include <QDebug>
+#include <QTimer>
 #include <fstream>
 #include <memory>
-#include <QDebug>
 
 RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *window, double timerInterval)
 	: QObject()

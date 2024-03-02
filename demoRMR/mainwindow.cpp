@@ -1,19 +1,16 @@
 #include "mainwindow.h"
-#include "qdebug.h"
-#include "qlineedit.h"
-#include "qnamespace.h"
-#include "qobject.h"
-#include "qpoint.h"
-#include "qpushbutton.h"
 #include "robotTrajectoryController.h"
 #include "ui_mainwindow.h"
+#include <QDebug>
+#include <QLineedit>
+#include <QNamespace>
+#include <QObject>
 #include <QPainter>
+#include <QPoint>
+#include <QPushbutton>
+#include <QThread>
 #include <algorithm>
 #include <cmath>
-#include <math.h>
-#include <QThread>
-#include <QDebug>
-#include <math.h>
 ///TOTO JE DEMO PROGRAM...AK SI HO NASIEL NA PC V LABAKU NEPREPISUJ NIC,ALE SKOPIRUJ SI MA NIEKAM DO INEHO FOLDERA
 /// AK HO MAS Z GITU A ROBIS NA LABAKOVOM PC, TAK SI HO VLOZ DO FOLDERA KTORY JE JASNE ODLISITELNY OD TVOJICH KOLEGOV
 /// NASLEDNE V POLOZKE Projects SKONTROLUJ CI JE VYPNUTY shadow build...

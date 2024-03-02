@@ -2,11 +2,11 @@
 #define ROBOTTRAJECTORYCONTROLLER_H
 
 #include "pidcontroller.h"
-#include "qtimer.h"
 #include "robot.h"
 #include <QObject>
-#include <QWidget>
 #include <QThread>
+#include <QTimer>
+#include <QWidget>
 #include <memory>
 
 #define TO_RADIANS 3.14159 / 180.0
