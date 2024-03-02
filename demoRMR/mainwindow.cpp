@@ -62,6 +62,8 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(this, &MainWindow::linResultsReady, m_trajectoryController, &RobotTrajectoryController::handleLinResults, Qt::QueuedConnection);
 	connect(this, &MainWindow::arcResultsReady, m_trajectoryController, &RobotTrajectoryController::handleArcResults, Qt::QueuedConnection);
 
+	connect(this, &MainWindow::lidarDataReady, m_trajectoryController, &RobotTrajectoryController::on_lidarDataReady_map, Qt::QueuedConnection);
+
 	connect(ui->linSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onLinSubmitButtonClicked, Qt::QueuedConnection);
 	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
 
@@ -99,7 +101,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
 	if (useCamera1 == true && actIndex > -1) /// ak zobrazujem data z kamery a aspon niektory frame vo vectore je naplneny
 	{
-		std::cout << actIndex << std::endl;
+		// std::cout << actIndex << std::endl;
 		QImage image = QImage((uchar *)frame[actIndex].data, frame[actIndex].cols, frame[actIndex].rows, frame[actIndex].step,
 							  QImage::Format_RGB888); //kopirovanie cvmat do qimage
 		painter.drawImage(rect, image.rgbSwapped());
@@ -135,6 +137,7 @@ int MainWindow::processThisLidar(LaserMeasurement laserData)
 	updateLaserPicture = 1;
 	update(); //tento prikaz prinuti prekreslit obrazovku.. zavola sa paintEvent funkcia
 
+	emit lidarDataReady(std::move(copyOfLaserData));
 
 	return 0;
 }
@@ -300,7 +303,7 @@ void MainWindow::_calculateTrajectory()
 	// 	points.push_back({ var, line.x() * var + line.y() });
 	// }
 
-	qDebug() << "Points: " << points;
+	// qDebug() << "Points: " << points;
 	emit linResultsReady(distance, angle, points);
 }
 

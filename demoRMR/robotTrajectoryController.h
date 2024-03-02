@@ -35,6 +35,7 @@ class RobotTrajectoryController : public QObject
 	}
 
 public:
+	using Map = std::vector<std::vector<bool>>;
 	RobotTrajectoryController(Robot *robot, QObject *window, double timerInterval = 100);
 
 	void setTranslationSpeed(double velocity, bool stopPositionTimer = false, double accelerationRate = 50);
@@ -64,6 +65,8 @@ public slots:
 
 	void on_requestMovement_move(double distance);
 	void on_requestRotation_move(double rotation);
+
+	void on_lidarDataReady_map(LaserMeasurement laserData);
 
 private:
 signals:
@@ -95,6 +98,10 @@ private:
 
 	double m_targetPosition;
 	double m_targetOmega;
+
+	Map m_map;
 };
+
+std::ostream &operator<<(std::ostream &os, const RobotTrajectoryController::Map &map);
 
 #endif // ROBOTTRAJECTORYCONTROLLER_H

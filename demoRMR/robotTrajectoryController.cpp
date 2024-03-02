@@ -18,6 +18,7 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	, m_rotationController(nullptr)
 	, m_forwardSpeed(0)
 	, m_rotationSpeed(0)
+	, m_map(200, std::vector<bool>(200, false))
 {
 	m_accelerationTimer.setInterval(timerInterval);
 	m_accelerationTimer.setSingleShot(false);
@@ -38,7 +39,7 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 
 void RobotTrajectoryController::setTranslationSpeed(double velocity, bool stopPositionTimer, double accelerationRate)
 {
-	std::cout << __FUNCTION__ << " velocity: " << velocity << std::endl;
+	// std::cout << __FUNCTION__ << " velocity: " << velocity << std::endl;
 	m_rotationSpeed = 0;
 	m_movementType = MovementType::Forward;
 	m_stoppingTimer.stop();
@@ -136,7 +137,6 @@ void RobotTrajectoryController::moveForwardBy(double distance)
 	m_stoppingTimer.stop();
 
 	m_controller = std::make_shared<PIDController>(1000, 0, 0, distance);
-	std::cout << "Starting position timer" << std::endl;
 	m_positionTimer.start();
 }
 
@@ -179,7 +179,7 @@ double RobotTrajectoryController::localDistanceError()
 double RobotTrajectoryController::finalRotationError()
 {
 	MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
-	std::cout << "Rotation error detection\n";
+	// std::cout << "Rotation error detection\n";
 	return win->finalRotationError();
 }
 
@@ -215,12 +215,12 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 
 	if (m_movementType == MovementType::Rotation) {
 		m_rotationSpeed += m_accelerationRate;
-		qDebug() << "setting Robot rotation speed to " << m_rotationSpeed;
+		// qDebug() << "setting Robot rotation speed to " << m_rotationSpeed;
 		m_robot->setRotationSpeed(m_rotationSpeed);
 	}
 	else if (m_movementType == MovementType::Forward) {
 		m_forwardSpeed += m_accelerationRate;
-		qDebug() << "setting Robot forward speed to " << m_forwardSpeed;
+		// qDebug() << "setting Robot forward speed to " << m_forwardSpeed;
 		m_robot->setTranslationSpeed(m_forwardSpeed);
 	}
 	else if (m_movementType == MovementType::Arc) {
@@ -248,12 +248,12 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		maxCorrection = 0.5;
 	}
 
-	qDebug() << "Error: " << error << " maxCorrection: " << maxCorrection;
+	// qDebug() << "Error: " << error << " maxCorrection: " << maxCorrection;
 	if (std::abs(error) < maxCorrection) {
-		qDebug() << "Error is less than " << maxCorrection << " It's " << maxCorrection;
+		// qDebug() << "Error is less than " << maxCorrection << " It's " << maxCorrection;
 
 		on_stoppingTimerTimeout_stop();
-		qDebug() << m_points;
+		// qDebug() << m_points;
 		if (m_movementType == MovementType::Rotation) {
 			qDebug() << "Rotation finished, requesting movement";
 			emit requestMovement(localDistanceError());
@@ -262,22 +262,21 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 			if (m_points.size() > 1)
 				m_points.removeFirst();
 
-			qDebug() << "Movement finished, requesting rotation";
 			emit requestRotation(localRotationError());
 		}
-		qDebug() << "Final destination reached final distance with movement: " << movementTypeToString(m_movementType) << " error: " << finalDistanceError();
+		// qDebug() << "Final destination reached final distance with movement: " << movementTypeToString(m_movementType) << " error: " << finalDistanceError();
 		return;
 	}
 
 	double u = 0;
 	if (m_movementType == MovementType::Rotation) {
 		u = m_controller->computeFromError(error);
-		qDebug() << "Akcny zasah: " << u;
+		// qDebug() << "Akcny zasah: " << u;
 		setRotationSpeed(u);
 	}
 	else if (m_movementType == MovementType::Forward) {
 		u = m_controller->computeFromError(error, true);
-		qDebug() << "Akcny zasah: " << u;
+		// qDebug() << "Akcny zasah: " << u;
 		setTranslationSpeed(u);
 	}
 	else if (m_movementType == MovementType::Arc) {
@@ -287,7 +286,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		setArcSpeed(u, o);
 	}
 
-	qDebug() << "Akcny zasah: " << u;
+	// qDebug() << "Akcny zasah: " << u;
 }
 
 void RobotTrajectoryController::onMoveForwardMove(double speed)
@@ -321,3 +320,43 @@ void RobotTrajectoryController::on_requestRotation_move(double rotation)
 {
 	rotateRobotTo(rotation);
 }
+
+void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData)
+{
+	MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
+	double robotAngle = win->m_fi - win->m_fiCorrection;
+	double robotX = win->m_x;
+	double robotY = win->m_y;
+
+	// double distance = laserData.Data[0].scanDistance / 20.;
+	// double x = robotX + distance * std::cos(laserData.Data[0].scanAngle + robotAngle);
+	// double y = robotY + distance * std::sin(laserData.Data[0].scanAngle + robotAngle);
+	// qDebug() << "Scan distance: " << distance << " x: " << x << " y: " << y;
+	for (size_t i = 0; i < laserData.numberOfScans; i++) {
+		double distance = laserData.Data[i].scanDistance / 20.;
+		if (distance < m_robot->b / 2.) {
+			// The laser did not reach the wall.
+			continue;
+		}
+
+		double x = robotX + distance * std::cos(laserData.Data[i].scanAngle + robotAngle);
+		double y = robotY + distance * std::sin(laserData.Data[i].scanAngle + robotAngle);
+		// qDebug() << "x: " << (int) (x + m_map[0].size()/2) << " y: " << (int) (y + m_map.size()/2);
+		x += m_map[0].size()/2;
+		y += m_map.size()/2;
+		m_map[(int)(x)][(int)(y)] = true;
+	}
+	// std::cout << m_map;
+}
+
+std::ostream &operator<<(std::ostream &os, const RobotTrajectoryController::Map &map)
+{
+	for (size_t i = 0; i < map.size(); i++) {
+		for (size_t j = 0; j < map[i].size(); j++) {
+			os << (map[i][j] ? '#' : ' ');
+		}
+		os << std::endl;
+	}
+	return os;
+}
+

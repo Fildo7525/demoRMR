@@ -46,6 +46,8 @@ class MainWindow : public QMainWindow
 {
 	Q_OBJECT
 
+	friend class RobotTrajectoryController;
+
 public:
 	explicit MainWindow(QWidget *parent = 0);
 	~MainWindow();
@@ -100,6 +102,7 @@ public:
 signals:
 	void linResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 	void arcResultsReady(double distance, double rotaiton, QVector<QPointF> points);
+	void lidarDataReady(LaserMeasurement laserData);
 
 private:
 	bool useCamera1;
