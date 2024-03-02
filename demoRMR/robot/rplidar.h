@@ -39,6 +39,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <QMetaType>
 
 typedef struct
 {
@@ -52,6 +53,9 @@ typedef struct
 	int numberOfScans;
 	LaserData Data[1000];
 } LaserMeasurement;
+
+Q_DECLARE_METATYPE(LaserMeasurement)
+
 class rplidar
 {
 public:
