@@ -257,8 +257,6 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 	if (std::abs(error) < maxCorrection) {
 		// qDebug() << "Error is less than " << maxCorrection << " It's " << maxCorrection;
 
-		on_stoppingTimerTimeout_stop();
-		// qDebug() << m_points;
 		if (m_movementType == MovementType::Rotation) {
 			qDebug() << "Rotation finished, requesting movement";
 			emit requestMovement(localDistanceError());
@@ -269,6 +267,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 
 			emit requestRotation(localRotationError());
 		}
+		on_stoppingTimerTimeout_stop();
 		// qDebug() << "Final destination reached final distance with movement: " << movementTypeToString(m_movementType) << " error: " << finalDistanceError();
 		return;
 	}
