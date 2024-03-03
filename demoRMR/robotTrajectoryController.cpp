@@ -204,6 +204,7 @@ void RobotTrajectoryController::on_stoppingTimerTimeout_stop()
 
 	// m_stoppingTimer.setInterval(3'000);
 	m_stopped = true;
+	m_movementType = MovementType::None;
 }
 
 void RobotTrajectoryController::on_accelerationTimerTimeout_control()
@@ -269,7 +270,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		return;
 	}
 
-	double u = 0;
+	double u;
 	if (m_movementType == MovementType::Rotation) {
 		u = m_controller->computeFromError(error);
 		// qDebug() << "Akcny zasah: " << u;
@@ -344,15 +345,22 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 			continue;
 		}
 
-		double x = robotX/60. + distance * std::cos(laserData.Data[i].scanAngle * TO_RADIANS + robotAngle);
-		double y = robotY/60. + distance * std::sin(laserData.Data[i].scanAngle * TO_RADIANS + robotAngle);
+		double scanAngle = laserData.Data[i].scanAngle * TO_RADIANS;
+		qDebug() << "Robot X: " << robotX << " Y: " << robotY << " Angle: " << robotAngle;
+		double x = robotX / 60. + distance * std::cos(scanAngle + robotAngle);
+		double y = robotY / 60. + distance * std::sin(scanAngle + robotAngle);
 
-		x += int(m_map[0].size() / 2);
-		y += int(m_map.size() / 2);
+		x += m_map[0].size() / 2;
+		y += m_map.size() / 2;
 
-		qDebug() << "x: " << (int) (x + int(m_map[0].size() / 2)) << " y: " << (int) (y + int(m_map.size() / 2));
+		// qDebug() << "x: " << (int) (x + int(m_map[0].size() / 2)) << " y: " << (int) (y + int(m_map.size() / 2));
+		int mapX = static_cast<int>(x);
+		int mapY = static_cast<int>(y);
 
-		m_map[(int)(x)][(int)(y)] = true;
+		// Check if within map bounds
+		if (mapX >= 0 && mapX < m_map[0].size() && mapY >= 0 && mapY < m_map.size()) {
+			m_map[mapY][mapX] = true;
+		}
 	}
 
 	if (m_fileWriteCounter % 5 == 0) {
