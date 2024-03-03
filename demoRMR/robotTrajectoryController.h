@@ -71,7 +71,7 @@ public slots:
 	void on_lidarDataReady_map(LaserMeasurement laserData);
 
 public: signals:
-	void pointCaluculated(const QPointF &point);
+	void pointCloudCaluculated(const QVector<QPointF> &points);
 
 private:
 signals:
@@ -104,7 +104,6 @@ private:
 	double m_targetPosition;
 	double m_targetOmega;
 
-	std::ofstream m_laserMapFile;
 	int m_fileWriteCounter;
 	Map m_map;
 };

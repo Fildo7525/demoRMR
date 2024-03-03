@@ -17,11 +17,12 @@ private:
 	void paintEvent(QPaintEvent *event); // Q_DECL_OVERRIDE;
 
 public slots:
-	void on_pointCalculated_show(const QPointF &point);
+	void on_pointCloudCalculated_show(const QVector<QPointF> &point);
 
 private:
 	Ui::LidarMapper ui;
 	QVector<QPointF> m_points;
+	QRect m_rect;
 };
 
 #endif

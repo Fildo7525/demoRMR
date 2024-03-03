@@ -135,6 +135,7 @@ int MainWindow::processThisLidar(LaserMeasurement laserData)
 	updateLaserPicture = 1;
 	update(); //tento prikaz prinuti prekreslit obrazovku.. zavola sa paintEvent funkcia
 
+	// qDebug() << "m_x: " << m_x << " m_y: " << m_y << " m_fi: " << m_fi;
 	emit lidarDataReady(std::move(copyOfLaserData));
 
 	return 0;
@@ -225,8 +226,6 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 
 	double l = (rightEncDist + leftEncDist) / 2.0;
 	{
-		m_mutex.lock();
-		// qDebug() << "Corrections:\n\tX: " << m_xCorrection << "\n\tY: " << m_yCorrection << "\n\tFi: " << m_fiCorrection;
 		m_fi = robotdata.GyroAngle / 100. * TO_RADIANS - m_fiCorrection;
 		m_x = m_x + l * std::cos(m_fi);
 		m_y = m_y + l * std::sin(m_fi);
@@ -237,8 +236,6 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 			m_fiCorrection = m_fi;
 			m_robotStartupLocation = true;
 		}
-
-		m_mutex.unlock();
 	}
 }
 
