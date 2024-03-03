@@ -2,12 +2,11 @@
 #include "robotTrajectoryController.h"
 #include "ui_mainwindow.h"
 #include <QDebug>
-#include <QLineedit>
-#include <QNamespace>
+#include <QLineEdit>
 #include <QObject>
 #include <QPainter>
 #include <QPoint>
-#include <QPushbutton>
+#include <QPushButton>
 #include <QThread>
 #include <algorithm>
 #include <cmath>
