@@ -19,6 +19,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/videoio.hpp>
 #include <sys/types.h>
+#include "lidarMapper.h"
 
 namespace Ui {
 class MainWindow;
@@ -96,6 +97,8 @@ private:
 
 	//--skuste tu nic nevymazat... pridavajte co chcete, ale pri odoberani by sa mohol stat nejaky drobny problem, co bude vyhadzovat chyby
 	Ui::MainWindow *ui;
+	LidarMapper *m_lidarMapper;
+
 	int updateLaserPicture;
 	LaserMeasurement copyOfLaserData;
 	std::string ipaddress;

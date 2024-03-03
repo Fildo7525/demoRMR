@@ -42,6 +42,8 @@ MainWindow::MainWindow(QWidget *parent)
 	// ROBOT IP
 	// ipaddress = "192.168.1.12";
 	ui->setupUi(this);
+	m_lidarMapper = new LidarMapper(this);
+
 	datacounter = 0;
 	//  timer = new QTimer(this);
 	//	connect(timer, SIGNAL(timeout()), this, SLOT(getNewFrame()));
@@ -380,6 +382,9 @@ double MainWindow::localRotationError(QPair<double, double> point)
 
 void MainWindow::on_pushButton_9_clicked() //start button
 {
+	m_lidarMapper->show();
+	m_lidarMapper->activateWindow();
+
 	//ziskanie joystickov
 	instance = QJoysticks::getInstance();
 	forwardspeed = 0;

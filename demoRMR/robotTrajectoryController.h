@@ -10,6 +10,7 @@
 #include <memory>
 
 #define TO_RADIANS 3.14159 / 180.0
+
 class RobotTrajectoryController : public QObject
 {
 	Q_OBJECT
@@ -68,6 +69,9 @@ public slots:
 	void on_requestRotation_move(double rotation);
 
 	void on_lidarDataReady_map(LaserMeasurement laserData);
+
+public: signals:
+	void pointCaluculated(const QPointF &point);
 
 private:
 signals:

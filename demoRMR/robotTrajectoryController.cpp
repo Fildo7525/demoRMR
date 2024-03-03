@@ -36,6 +36,9 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 
 	connect(this, &RobotTrajectoryController::requestMovement, this, &RobotTrajectoryController::on_requestMovement_move, Qt::QueuedConnection);
 	connect(this, &RobotTrajectoryController::requestRotation, this, &RobotTrajectoryController::on_requestRotation_move, Qt::QueuedConnection);
+
+	MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
+	connect(this, &RobotTrajectoryController::pointCaluculated, win->m_lidarMapper, &LidarMapper::on_pointCalculated_show, Qt::QueuedConnection);
 }
 
 void RobotTrajectoryController::setTranslationSpeed(double velocity, bool stopPositionTimer, double accelerationRate)
@@ -197,6 +200,7 @@ void RobotTrajectoryController::on_stoppingTimerTimeout_stop()
 	m_robot->setTranslationSpeed(0);
 	m_forwardSpeed = 0;
 	m_rotationSpeed = 0;
+	m_movementType = MovementType::None;
 
 	m_accelerationTimer.stop();
 	m_positionTimer.stop();
@@ -356,6 +360,8 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 		// qDebug() << "x: " << (int) (x + int(m_map[0].size() / 2)) << " y: " << (int) (y + int(m_map.size() / 2));
 		int mapX = static_cast<int>(x);
 		int mapY = static_cast<int>(y);
+
+		emit pointCaluculated(QPointF(mapX, mapY));
 
 		// Check if within map bounds
 		if (mapX >= 0 && mapX < m_map[0].size() && mapY >= 0 && mapY < m_map.size()) {

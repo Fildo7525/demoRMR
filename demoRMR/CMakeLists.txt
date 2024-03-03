@@ -20,6 +20,7 @@ set(HEADERS
 	mainwindow.h
 	pidcontroller.h
 	robotTrajectoryController.h
+	lidarMapper.h
 )
 
 set(SOURCES
@@ -27,10 +28,12 @@ set(SOURCES
 	mainwindow.cpp
 	pidcontroller.cpp
 	robotTrajectoryController.cpp
+	lidarMapper.cpp
 )
 
 set(UI
 	mainwindow.ui
+	lidarMapper.ui
 )
 
 add_executable(rmr
