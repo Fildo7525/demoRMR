@@ -7,7 +7,6 @@
 #include <QObject>
 #include <QWidget>
 #include <QThread>
-#include <condition_variable>
 #include <memory>
 
 class RobotTrajectoryController : public QObject
@@ -15,10 +14,25 @@ class RobotTrajectoryController : public QObject
 	Q_OBJECT
 
 	enum class MovementType {
+		None,
 		Forward,
 		Rotation,
 		Arc
 	};
+
+	QString movementTypeToString(MovementType type) {
+		switch (type) {
+		case MovementType::None:
+			return "None";
+		case MovementType::Forward:
+			return "Forward";
+		case MovementType::Rotation:
+			return "Rotation";
+		case MovementType::Arc:
+			return "Arc";
+		}
+		return "None";
+	}
 
 public:
 	RobotTrajectoryController(Robot *robot, QObject *window, double timerInterval = 100);
@@ -42,12 +56,11 @@ public slots:
 	void on_stoppingTimerTimeout_stop();
 	void on_accelerationTimerTimeout_control();
 	void on_positionTimerTimeout_changePosition();
-	void on_arcTimerTimeout_changePosition();
 
 	void onMoveForwardMove(double speed);
 	void onChangeRotationRotate(double speed);
 	void handleLinResults(double distance, double rotation, QVector<QPointF> points);
-	void handleArcResults(double distance, double rotation);
+	void handleArcResults(double distance, double rotation, QVector<QPointF> points);
 
 	void on_requestMovement_move(double distance);
 	void on_requestRotation_move(double rotation);
@@ -63,7 +76,6 @@ private:
 
 	QTimer m_accelerationTimer;
 	QTimer m_positionTimer;
-	QTimer m_arcTimer;
 	QTimer m_stoppingTimer;
 
 	std::shared_ptr<PIDController> m_controller;

@@ -19,14 +19,11 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	, m_forwardSpeed(0)
 	, m_rotationSpeed(0)
 {
-	m_accelerationTimer.setInterval(timerInterval / 2);
+	m_accelerationTimer.setInterval(timerInterval);
 	m_accelerationTimer.setSingleShot(false);
 
-	m_positionTimer.setInterval(timerInterval);
+	m_positionTimer.setInterval(timerInterval*2);
 	m_positionTimer.setSingleShot(false);
-
-	m_arcTimer.setInterval(timerInterval);
-	m_arcTimer.setSingleShot(false);
 
 	m_stoppingTimer.setInterval(3'000);
 	m_stoppingTimer.setSingleShot(true);
@@ -34,7 +31,6 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	connect(&m_stoppingTimer, &QTimer::timeout, this, &RobotTrajectoryController::on_stoppingTimerTimeout_stop, Qt::QueuedConnection);
 	connect(&m_accelerationTimer, &QTimer::timeout, this, &RobotTrajectoryController::on_accelerationTimerTimeout_control, Qt::QueuedConnection);
 	connect(&m_positionTimer, &QTimer::timeout, this, &RobotTrajectoryController::on_positionTimerTimeout_changePosition, Qt::QueuedConnection);
-	connect(&m_arcTimer, &QTimer::timeout, this, &RobotTrajectoryController::on_arcTimerTimeout_changePosition, Qt::QueuedConnection);
 
 	connect(this, &RobotTrajectoryController::requestMovement, this, &RobotTrajectoryController::on_requestMovement_move, Qt::QueuedConnection);
 	connect(this, &RobotTrajectoryController::requestRotation, this, &RobotTrajectoryController::on_requestRotation_move, Qt::QueuedConnection);
@@ -48,7 +44,6 @@ void RobotTrajectoryController::setTranslationSpeed(double velocity, bool stopPo
 	m_stoppingTimer.stop();
 	if (stopPositionTimer) {
 		m_positionTimer.stop();
-		m_arcTimer.stop();
 	}
 
 	m_targetVelocity = velocity;
@@ -76,7 +71,6 @@ void RobotTrajectoryController::setRotationSpeed(double omega, bool stopPosition
 
 	if (stopPositionTimer) {
 		m_positionTimer.stop();
-		m_arcTimer.stop();
 	}
 
 	m_targetVelocity = omega;
@@ -103,7 +97,6 @@ void RobotTrajectoryController::setArcSpeed(double velocity, double omega, bool 
 
 	if (stopPositionTimer) {
 		m_positionTimer.stop();
-		m_arcTimer.stop();
 	}
 
 	m_targetVelocity = velocity;
@@ -129,7 +122,6 @@ void RobotTrajectoryController::rotateRobotTo(double rotation)
 
 	m_accelerationTimer.stop();
 	m_stoppingTimer.stop();
-	m_arcTimer.stop();
 
 	m_controller = std::make_shared<PIDController>(1, 0, 0, rotation);
 	m_positionTimer.start();
@@ -142,9 +134,8 @@ void RobotTrajectoryController::moveForwardBy(double distance)
 
 	m_accelerationTimer.stop();
 	m_stoppingTimer.stop();
-	m_arcTimer.stop();
 
-	m_controller = std::make_shared<PIDController>(2500, 0, 0, distance);
+	m_controller = std::make_shared<PIDController>(1000, 0, 0, distance);
 	std::cout << "Starting position timer" << std::endl;
 	m_positionTimer.start();
 }
@@ -156,12 +147,11 @@ void RobotTrajectoryController::moveByArcTo(double distance, double rotation)
 
 	m_accelerationTimer.stop();
 	m_stoppingTimer.stop();
-	m_positionTimer.stop();
 
-	m_controller = std::make_shared<PIDController>(1, 0, 0, distance);
-	m_rotationController = std::make_shared<PIDController>(100, 5, 0, rotation);
+	m_controller = std::make_shared<PIDController>(100, 0, 0, distance);
+	m_rotationController = std::make_shared<PIDController>(0.5, 0, 0, rotation);
 
-	m_arcTimer.start();
+	m_positionTimer.start();
 }
 
 bool RobotTrajectoryController::isNear(double currentVelocity)
@@ -203,6 +193,7 @@ double RobotTrajectoryController::localRotationError()
 
 void RobotTrajectoryController::on_stoppingTimerTimeout_stop()
 {
+	m_robot->setTranslationSpeed(0);
 	m_forwardSpeed = 0;
 	m_rotationSpeed = 0;
 
@@ -210,8 +201,7 @@ void RobotTrajectoryController::on_stoppingTimerTimeout_stop()
 	m_positionTimer.stop();
 	m_stoppingTimer.stop();
 
-	m_stoppingTimer.setInterval(3'000);
-	m_robot->setTranslationSpeed(0);
+	// m_stoppingTimer.setInterval(3'000);
 	m_stopped = true;
 }
 
@@ -220,7 +210,6 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 	if (isNear(m_forwardSpeed) || isNear(m_rotationSpeed)) {
 		m_accelerationTimer.stop();
 		m_stoppingTimer.start();
-		m_arcTimer.stop();
 		return;
 	}
 
@@ -234,7 +223,7 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 		qDebug() << "setting Robot forward speed to " << m_forwardSpeed;
 		m_robot->setTranslationSpeed(m_forwardSpeed);
 	}
-	else {
+	else if (m_movementType == MovementType::Arc) {
 		m_forwardSpeed += m_accelerationRate;
 		m_rotationSpeed += m_omegaRate;
 		m_robot->setArcSpeed(m_forwardSpeed, m_rotationSpeed);
@@ -254,22 +243,29 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		auto rotError = localRotationError();
 		maxCorrection = std::abs((std::sin(rotError) * error) * 1.1);
 	}
+	else if (m_movementType == MovementType::Arc) {
+		error = localDistanceError();
+		maxCorrection = 0.5;
+	}
 
 	qDebug() << "Error: " << error << " maxCorrection: " << maxCorrection;
 	if (std::abs(error) < maxCorrection) {
-		qDebug() << "Error is less than 0.1. It's " << maxCorrection;
+		qDebug() << "Error is less than " << maxCorrection << " It's " << maxCorrection;
 
 		on_stoppingTimerTimeout_stop();
 		qDebug() << m_points;
 		if (m_movementType == MovementType::Rotation) {
+			qDebug() << "Rotation finished, requesting movement";
 			emit requestMovement(localDistanceError());
 		}
-		else if (m_movementType == MovementType::Forward && finalDistanceError() > 0.1) {
+		else if (m_movementType == MovementType::Forward && finalDistanceError() > 0.05) {
 			if (m_points.size() > 1)
 				m_points.removeFirst();
-			qDebug() << m_points;
+
+			qDebug() << "Movement finished, requesting rotation";
 			emit requestRotation(localRotationError());
 		}
+		qDebug() << "Final destination reached final distance with movement: " << movementTypeToString(m_movementType) << " error: " << finalDistanceError();
 		return;
 	}
 
@@ -284,30 +280,14 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		qDebug() << "Akcny zasah: " << u;
 		setTranslationSpeed(u);
 	}
-	else {
-		qDebug() << "Arc movement type";
+	else if (m_movementType == MovementType::Arc) {
+		u = m_controller->computeFromError(error, true);
+		double o = m_rotationController->computeFromError(error);
+		qDebug() << "Akcny zasah u: " << u << " o: " << o;
+		setArcSpeed(u, o);
 	}
 
 	qDebug() << "Akcny zasah: " << u;
-}
-
-void RobotTrajectoryController::on_arcTimerTimeout_changePosition()
-{
-	double distanceError = localDistanceError();
-	double rotationError = localRotationError();
-
-	qDebug() << "Error: distance:" << distanceError << " rotation: " << rotationError;
-	if (std::abs(distanceError) < 0.1 && std::abs(rotationError) < 0.1) {
-		qDebug() << "Error is less than 0.1: distance:" << distanceError << " rotation: " << rotationError;
-		on_stoppingTimerTimeout_stop();
-		return;
-	}
-
-	double d = m_controller->computeFromError(distanceError);
-	double omega = m_rotationController->computeFromError(rotationError);
-	qDebug() << "Akcny zasah: distance " << d << " omega: " << omega;
-
-	setArcSpeed(d, omega);
 }
 
 void RobotTrajectoryController::onMoveForwardMove(double speed)
@@ -326,8 +306,9 @@ void RobotTrajectoryController::handleLinResults(double distance, double rotatio
 	rotateRobotTo(rotation);
 }
 
-void RobotTrajectoryController::handleArcResults(double distance, double rotation)
+void RobotTrajectoryController::handleArcResults(double distance, double rotation, QVector<QPointF> points)
 {
+	m_points = points;
 	moveByArcTo(distance, rotation);
 }
 

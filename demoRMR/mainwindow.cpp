@@ -8,6 +8,7 @@
 #include "robotTrajectoryController.h"
 #include "ui_mainwindow.h"
 #include <QPainter>
+#include <algorithm>
 #include <cmath>
 #include <math.h>
 #include <QThread>
@@ -68,7 +69,7 @@ MainWindow::MainWindow(QWidget *parent)
 	m_trajectoryThread->start();
 	m_controllerThread->start();
 
-	std::cout << __FUNCTION__ << " " << std::this_thread::get_id() << std::endl;
+	// std::cout << __FUNCTION__ << " " << std::this_thread::get_id() << std::endl;
 
 	m_trajectoryController->moveToThread(m_controllerThread);
 }
@@ -240,14 +241,23 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 	}
 }
 
-static QVector<double> generateSequence(double min, double max)
+static QVector<double> generateSequence(const QPointF &min, const QPointF &max, const QPointF &line)
 {
 	QVector<double> ret;
 
-	for (int var = min + 1; var < (int)max; var += 2) {
+	const double h = std::hypot(max.x() - min.x(), max.y() - min.y());
+	const double dif = (max.x() - min.x()) / h;
+	qDebug() << "Diff: cos: " << dif;
+
+	double var = min.x() + dif;
+	while (var < max.x()-1) {
 		ret.push_back(var);
+		var += dif;
 	}
-	ret.push_back(max);
+	// for (double var = min.x() + dif; var < max.x(); var += dif) {
+	// 	ret.push_back(var);
+	// }
+	ret.push_back(max.x());
 
 	return ret;
 }
@@ -273,15 +283,22 @@ void MainWindow::_calculateTrajectory()
 {
 	auto [distance, angle] = calculateTrajectory();
 
-	QPointF line = computeLineParameters({ m_x, m_y }, { m_xTarget, m_yTarget });
+	QPointF min(m_x, m_y);
+	QPointF max(m_xTarget, m_yTarget);
+	QPointF line = computeLineParameters(min, max);
 	qDebug() << "Line: " << line;
 
-	QVector<double> X = generateSequence(m_x, m_xTarget);
+	QVector<double> X = generateSequence(min, max, line);
+	qDebug() << "X: " << X;
+
 	QVector<QPointF> points;
 
-	for (const double &var : X) {
-		points.push_back({ var, line.x() * var + line.y() });
-	}
+	std::transform(X.begin(), X.end(), std::back_inserter(points), [&line](const double &var) {
+		return QPointF(var, line.x() * var + line.y());
+	});
+	// for (const double &var : X) {
+	// 	points.push_back({ var, line.x() * var + line.y() });
+	// }
 
 	qDebug() << "Points: " << points;
 	emit linResultsReady(distance, angle, points);
@@ -378,7 +395,12 @@ void MainWindow::on_pushButton_9_clicked() //start button
 							std::bind(&MainWindow::processThisLidar, this, std::placeholders::_1));
 	robot.setRobotParameters(ipaddress, 53000, 5300, std::bind(&MainWindow::processThisRobot, this, std::placeholders::_1));
 	//---simulator ma port 8889, realny robot 8000
-	robot.setCameraParameters("http://" + ipaddress + ":8000/stream.mjpg", std::bind(&MainWindow::processThisCamera, this, std::placeholders::_1));
+	if (ipaddress == "127.0.0.1") {
+		robot.setCameraParameters("http://" + ipaddress + ":8889/stream.mjpg", std::bind(&MainWindow::processThisCamera, this, std::placeholders::_1));
+	}
+	else {
+		robot.setCameraParameters("http://" + ipaddress + ":8000/stream.mjpg", std::bind(&MainWindow::processThisCamera, this, std::placeholders::_1));
+	}
 
 	///ked je vsetko nasetovane tak to tento prikaz spusti (ak nieco nieje setnute,tak to normalne nenastavi.cize ak napr nechcete kameru,vklude vsetky info o nej vymazte)
 	robot.robotStart();
@@ -469,7 +491,8 @@ void MainWindow::onArcSubmitButtonClicked(bool clicked)
 
 	if (ok1 && ok2) {
 		auto [distance, angle] = calculateTrajectory();
-		emit arcResultsReady(distance, angle);
+		QVector<QPointF> points({{ m_xTarget, m_yTarget }});
+		emit arcResultsReady(distance, angle, points);
 	}
 }
 

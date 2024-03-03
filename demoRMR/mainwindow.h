@@ -99,7 +99,7 @@ signals:
 public:
 signals:
 	void linResultsReady(double distance, double rotaiton, QVector<QPointF> points);
-	void arcResultsReady(double distance, double rotaiton);
+	void arcResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 
 private:
 	bool useCamera1;
