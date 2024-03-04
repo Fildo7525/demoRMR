@@ -151,8 +151,8 @@ void RobotTrajectoryController::moveByArcTo(double distance, double rotation)
 	m_accelerationTimer.stop();
 	m_stoppingTimer.stop();
 
-	m_controller = std::make_shared<PIDController>(100, 0, 0, distance);
-	m_rotationController = std::make_shared<PIDController>(0.5, 0, 0, rotation);
+	m_controller = std::make_shared<PIDController>(1000, 0, 0, distance);
+	m_rotationController = std::make_shared<PIDController>(100, 0, 0, rotation);
 
 	m_positionTimer.start();
 }
@@ -249,8 +249,9 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		maxCorrection = std::abs((std::sin(rotError) * error) * 1.1);
 	}
 	else if (m_movementType == MovementType::Arc) {
-		error = localDistanceError();
-		maxCorrection = 0.5;
+		double fde = finalDistanceError();
+		error = fde; // + lde * localRotationError();
+		maxCorrection = 0.1;
 	}
 
 	// qDebug() << "Error: " << error << " maxCorrection: " << maxCorrection;
@@ -285,9 +286,21 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 	}
 	else if (m_movementType == MovementType::Arc) {
 		u = m_controller->computeFromError(error, true);
-		double o = m_rotationController->computeFromError(error);
-		qDebug() << "Akcny zasah u: " << u << " o: " << o;
-		setArcSpeed(u, o);
+		double o;
+		if (std::abs(localRotationError()) > 0.1) {
+			double lre = localRotationError();
+			lre = (lre > 0 ? lre - PI : lre + PI);
+			o = - m_rotationController->computeFromError(lre);
+		}
+		else {
+			o = 3200;
+		}
+		// qDebug() << "Distance error: " << error << " Rotation error: " << localRotationError() << " u: " << u << " o: " << o;
+		// MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
+		// double x = win->ui->targetXLine->text().toDouble();
+		// double y = win->ui->targetYLine->text().toDouble();
+		// qDebug() << "Akcny zasah u: " << u << " o: " << o;
+		m_robot->setArcSpeed(u, o);
 	}
 
 	// qDebug() << "Akcny zasah: " << u;
