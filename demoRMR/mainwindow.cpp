@@ -274,7 +274,7 @@ static QPointF computeLineParameters(QPointF p1, QPointF p2)
 	return line;
 }
 
-void MainWindow::_calculateTrajectory()
+void MainWindow::_calculateTrajectory(RobotTrajectoryController::MovementType type)
 {
 	auto [distance, angle] = calculateTrajectory();
 
@@ -287,7 +287,12 @@ void MainWindow::_calculateTrajectory()
 	qDebug() << "Points: " << points;
 
 	// qDebug() << "Points: " << points;
-	emit linResultsReady(distance, angle, points);
+	if (type == RobotTrajectoryController::MovementType::Forward) {
+		emit linResultsReady(distance, angle, points);
+	}
+	else if (type == RobotTrajectoryController::MovementType::Arc) {
+		emit arcResultsReady(distance, angle, points);
+	}
 }
 
 QPair<double, double> MainWindow::calculateTrajectory()
@@ -469,7 +474,7 @@ void MainWindow::onLinSubmitButtonClicked(bool clicked)
 	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
 
 	if (ok1 && ok2) {
-		_calculateTrajectory();
+		_calculateTrajectory(RobotTrajectoryController::MovementType::Forward);
 	}
 }
 
@@ -479,9 +484,7 @@ void MainWindow::onArcSubmitButtonClicked(bool clicked)
 	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
 
 	if (ok1 && ok2) {
-		auto [distance, angle] = calculateTrajectory();
-		QVector<QPointF> points({{ m_xTarget, m_yTarget }});
-		emit arcResultsReady(distance, angle, points);
+		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
 	}
 }
 

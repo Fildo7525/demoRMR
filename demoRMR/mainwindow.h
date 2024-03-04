@@ -50,7 +50,7 @@ public:
 private:
 	void paintEvent(QPaintEvent *event); // Q_DECL_OVERRIDE;
 	void calculateOdometry(const TKobukiData &robotdata);
-	void _calculateTrajectory();
+	void _calculateTrajectory(RobotTrajectoryController::MovementType type);
 
 private slots:
 	void on_pushButton_9_clicked();

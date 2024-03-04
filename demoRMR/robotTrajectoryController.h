@@ -15,6 +15,7 @@ class RobotTrajectoryController : public QObject
 {
 	Q_OBJECT
 
+public:
 	enum class MovementType {
 		None,
 		Forward,
@@ -36,7 +37,6 @@ class RobotTrajectoryController : public QObject
 		return "None";
 	}
 
-public:
 	using Map = std::vector<std::vector<bool>>;
 	RobotTrajectoryController(Robot *robot, QObject *window, double timerInterval = 100);
 
