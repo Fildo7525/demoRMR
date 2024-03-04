@@ -1,11 +1,8 @@
 #include "lidarMapper.h"
-#include "mainwindow.h"
 
 #include <QDebug>
 #include <QPainter>
 #include <QThread>
-#include <algorithm>
-#include <iterator>
 #include <qglobal.h>
 
 LidarMapper::LidarMapper(QWidget *parent)

@@ -9,7 +9,6 @@
 #include <QPoint>
 #include <QPushButton>
 #include <QThread>
-#include <algorithm>
 #include <cmath>
 ///TOTO JE DEMO PROGRAM...AK SI HO NASIEL NA PC V LABAKU NEPREPISUJ NIC,ALE SKOPIRUJ SI MA NIEKAM DO INEHO FOLDERA
 /// AK HO MAS Z GITU A ROBIS NA LABAKOVOM PC, TAK SI HO VLOZ DO FOLDERA KTORY JE JASNE ODLISITELNY OD TVOJICH KOLEGOV
@@ -245,7 +244,6 @@ static QVector<QPointF> generateSequence(const QPointF &min, const QPointF &max,
 
 	const double h = std::hypot(max.x() - min.x(), max.y() - min.y());
 	const double dif = (max.x() - min.x()) / h;
-	qDebug() << "Diff: cos: " << dif;
 
 	double var = min.x() + dif;
 	while (var < max.x()-1) {
@@ -282,10 +280,8 @@ void MainWindow::_calculateTrajectory(RobotTrajectoryController::MovementType ty
 	QPointF min(m_x, m_y);
 	QPointF max(m_xTarget, m_yTarget);
 	QPointF line = computeLineParameters(min, max);
-	qDebug() << "Line: " << line;
 
 	QVector<QPointF> points = generateSequence(min, max, line);
-	qDebug() << "Points: " << points;
 
 	// qDebug() << "Points: " << points;
 	if (type == RobotTrajectoryController::MovementType::Forward) {
