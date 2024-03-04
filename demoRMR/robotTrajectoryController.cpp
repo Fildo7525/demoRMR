@@ -42,7 +42,7 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 
 void RobotTrajectoryController::setTranslationSpeed(double velocity, bool stopPositionTimer, double accelerationRate)
 {
-	// std::cout << __FUNCTION__ << " velocity: " << velocity << std::endl;
+	std::cout << __FUNCTION__ << " velocity: " << velocity << std::endl;
 	m_rotationSpeed = 0;
 	m_movementType = MovementType::Forward;
 	m_stoppingTimer.stop();
@@ -140,6 +140,7 @@ void RobotTrajectoryController::moveForwardBy(double distance)
 	m_stoppingTimer.stop();
 
 	m_controller = std::make_shared<PIDController>(1000, 0, 0, distance);
+	qDebug() << "Setting PID controller with distance: " << distance;
 	m_positionTimer.start();
 }
 
@@ -276,12 +277,12 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 	double u;
 	if (m_movementType == MovementType::Rotation) {
 		u = m_controller->computeFromError(error);
-		// qDebug() << "Akcny zasah: " << u;
+		qDebug() << "Akcny zasah rotacie: " << u;
 		setRotationSpeed(u);
 	}
 	else if (m_movementType == MovementType::Forward) {
 		u = m_controller->computeFromError(error, true);
-		// qDebug() << "Akcny zasah: " << u;
+		qDebug() << "Akcny zasah posunu: " << u;
 		setTranslationSpeed(u);
 	}
 	else if (m_movementType == MovementType::Arc) {
@@ -364,7 +365,7 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 		// qDebug() << "Laser distance: " << distance << " distance: " << distance << " Robot x: " << robotX << " Robot y: " << robotY;
 
 		if (i == 0) {
-			qDebug() << "X: " << robotX << " Y: " << robotY << " Fi: " << robotAngle << " Distance: " << distance << " Angle: " << scanAngle;
+			// qDebug() << "X: " << robotX << " Y: " << robotY << " Fi: " << robotAngle << " Distance: " << distance << " Angle: " << scanAngle;
 		}
 
 		double x = robotX / 20. + distance * std::cos(scanAngle + robotAngle);
