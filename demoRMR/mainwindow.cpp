@@ -457,6 +457,37 @@ void MainWindow::on_showMapButton_clicked()
 
 }
 
+void MainWindow::on_startMapScanButton_clicked()
+{
+// Start:
+// XX.00 | YY.YY
+// ============
+// 00.00 |  00.00
+// 00.10 |  03.00
+// 04.00 |  04.00
+// 03.00 |  04.00
+// 03.00 |  00.70
+// 05.00 |  00.60
+// 05.00 |  01.50
+// 02.60 | -00.80
+// 01.50 | -01.2
+// End
+	m_xTarget = 1.5;
+	m_yTarget = -1.2;
+	QVector<QPointF> points = {
+		{0.1, 3},
+		{4, 4},
+		{3, 4},
+		{3, 0.7},
+		{5, 0.6},
+		{5, 1.5},
+		{2.6, -0.8},
+		{1.5, -1.2}
+	};
+	auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
+	emit arcResultsReady(distance, angle, points);
+}
+
 void MainWindow::timeout()
 {
 	m_trajectoryController->setTranslationSpeed(0, true);
