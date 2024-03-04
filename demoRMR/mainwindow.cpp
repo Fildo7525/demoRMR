@@ -375,6 +375,9 @@ void MainWindow::on_pushButton_9_clicked() //start button
 	m_lidarMapper->show();
 	m_lidarMapper->activateWindow();
 
+	connect(m_trajectoryController, &RobotTrajectoryController::pointCloudCaluculated,
+			m_lidarMapper, &LidarMapper::on_pointCloudCalculatedShow, Qt::QueuedConnection);
+
 	//ziskanie joystickov
 	instance = QJoysticks::getInstance();
 	forwardspeed = 0;

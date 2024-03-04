@@ -17,7 +17,7 @@ private:
 	void paintEvent(QPaintEvent *event); // Q_DECL_OVERRIDE;
 
 public slots:
-	void on_pointCloudCalculated_show(const QVector<QPointF> &point);
+	void on_pointCloudCalculatedShow(QVector<QPointF> points);
 
 private:
 	Ui::LidarMapper ui;

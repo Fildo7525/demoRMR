@@ -72,7 +72,7 @@ public slots:
 	void on_lidarDataReady_map(LaserMeasurement laserData);
 
 public: signals:
-	void pointCloudCaluculated(const QVector<QPointF> &points);
+	void pointCloudCaluculated(QVector<QPointF> points);
 
 private:
 signals:

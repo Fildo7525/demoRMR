@@ -31,6 +31,7 @@ class MainWindow : public QMainWindow
 	Q_OBJECT
 
 	friend class RobotTrajectoryController;
+	friend class LidarMapper;
 
 public:
 	explicit MainWindow(QWidget *parent = 0);

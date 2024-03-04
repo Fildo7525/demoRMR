@@ -1,8 +1,10 @@
 #include "lidarMapper.h"
+#include "mainwindow.h"
 
 #include <QDebug>
 #include <QPainter>
 #include <QThread>
+#include <qglobal.h>
 
 LidarMapper::LidarMapper(QWidget *parent)
 	: QDialog(parent)
@@ -35,7 +37,7 @@ void LidarMapper::paintEvent(QPaintEvent *event)
 	}
 }
 
-void LidarMapper::on_pointCloudCalculated_show(const QVector<QPointF> &points)
+void LidarMapper::on_pointCloudCalculatedShow(QVector<QPointF> points)
 {
 	m_points.append(points);
 	// m_points = points;

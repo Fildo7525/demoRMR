@@ -37,9 +37,6 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	connect(this, &RobotTrajectoryController::requestMovement, this, &RobotTrajectoryController::on_requestMovement_move, Qt::QueuedConnection);
 	connect(this, &RobotTrajectoryController::requestRotation, this, &RobotTrajectoryController::on_requestRotation_move, Qt::QueuedConnection);
 	connect(this, &RobotTrajectoryController::requestArc, this, &RobotTrajectoryController::on_requestArc_move, Qt::QueuedConnection);
-
-	MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
-	connect(this, &RobotTrajectoryController::pointCloudCaluculated, win->m_lidarMapper, &LidarMapper::on_pointCloudCalculated_show, Qt::QueuedConnection);
 }
 
 void RobotTrajectoryController::setTranslationSpeed(double velocity, bool stopPositionTimer, double accelerationRate)
