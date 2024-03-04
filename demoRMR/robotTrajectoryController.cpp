@@ -219,19 +219,29 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 		return;
 	}
 
+	static auto limit = [] (double &speed, const double target, double rate) {
+		if (speed + rate > target) {
+			speed = target;
+		}
+		else {
+			speed += rate;
+		}
+	};
+
 	if (m_movementType == MovementType::Rotation) {
-		m_rotationSpeed += m_accelerationRate;
+		limit(m_rotationSpeed, m_targetVelocity, m_accelerationRate);
 		// qDebug() << "setting Robot rotation speed to " << m_rotationSpeed;
 		m_robot->setRotationSpeed(m_rotationSpeed);
 	}
 	else if (m_movementType == MovementType::Forward) {
-		m_forwardSpeed += m_accelerationRate;
+		limit(m_forwardSpeed, m_targetVelocity, m_accelerationRate);
 		// qDebug() << "setting Robot forward speed to " << m_forwardSpeed;
 		m_robot->setTranslationSpeed(m_forwardSpeed);
 	}
 	else if (m_movementType == MovementType::Arc) {
-		m_forwardSpeed += m_accelerationRate;
-		m_rotationSpeed += m_omegaRate;
+		limit(m_forwardSpeed, m_targetVelocity, m_accelerationRate);
+		limit(m_rotationSpeed, m_targetOmega, m_omegaRate);
+		qDebug() << "setting Robot arc speed to " << m_forwardSpeed << " and rotation speed to " << m_rotationSpeed;
 		m_robot->setArcSpeed(m_forwardSpeed, m_rotationSpeed);
 	}
 }

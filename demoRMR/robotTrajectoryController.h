@@ -42,7 +42,7 @@ public:
 
 	void setTranslationSpeed(double velocity, bool stopPositionTimer = false, double accelerationRate = 50);
 	void setRotationSpeed(double omega, bool stopPositionTimer = false, double accelerationRate = 0.1);
-	void setArcSpeed(double velocity, double omega, bool stopPositionTimer = false, double accelerationRate = 50, double omegaRate = 0.1);
+	void setArcSpeed(double velocity, double omega, bool stopPositionTimer = false, double accelerationRate = 50, double omegaRate = 20);
 
 	void rotateRobotTo(double rotation);
 	void moveForwardBy(double distance);
