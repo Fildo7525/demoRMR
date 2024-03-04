@@ -17,7 +17,7 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	, m_rotationController(nullptr)
 	, m_forwardSpeed(0)
 	, m_rotationSpeed(0)
-	, m_map(300, std::vector<bool>(300, false))
+	, m_map(50, std::vector<bool>(50, false))
 	, m_fileWriteCounter(0)
 	, m_arcExpected(false)
 {
@@ -352,8 +352,8 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 {
 	MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
 	double robotAngle = win->m_fi;
-	double robotX = win->m_x;
-	double robotY = win->m_y;
+	double robotX = 0+win->m_x * 1000;
+	double robotY = 0-win->m_y * 1000;
 	QVector<QPointF> points;
 	long numberOfScans = laserData.numberOfScans;
 
@@ -361,33 +361,24 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 		return;
 	}
 
-	for (size_t i = 0; i < numberOfScans; i += 2) {
+	for (size_t i = 0; i < numberOfScans; i++) {
 		double distance = laserData.Data[i].scanDistance / 20.;
-		double scanAngle = (90. - laserData.Data[i].scanAngle) * TO_RADIANS;
+		double scanAngle = (360 - laserData.Data[i].scanAngle + 90) * TO_RADIANS;
 
-		if (distance < m_robot->b / 2.) {
-			// The laser did not reach the wall.
+		if (distance < m_robot->b) {
 			continue;
 		}
 
-		// qDebug() << "Scan angle pre:" << laserData.Data[i].scanAngle << " pos: " << scanAngle << " Robot angle: " << robotAngle;
-		// qDebug() << "Laser distance: " << distance << " distance: " << distance << " Robot x: " << robotX << " Robot y: " << robotY;
-
-		if (i == 0) {
-			// qDebug() << "X: " << robotX << " Y: " << robotY << " Fi: " << robotAngle << " Distance: " << distance << " Angle: " << scanAngle;
-		}
-
-		double x = robotX / 20. + distance * std::cos(scanAngle + robotAngle);
-		double y = robotY / 20. + distance * std::sin(scanAngle + robotAngle);
+		double x = robotX / 20. + distance * std::sin(scanAngle + robotAngle);
+		double y = robotY / 20. + distance * std::cos(scanAngle + robotAngle);
 
 		points.append(QPointF(x, y));
 
-		x += m_map[0].size() / 2.;
-		y += m_map.size() / 2.;
+		x /= 14;
+		y /= 14;
 
-		// qDebug() << "x: " << (int) (x + int(m_map[0].size() / 2)) << " y: " << (int) (y + int(m_map.size() / 2));
-		int mapX = static_cast<int>(x);
-		int mapY = static_cast<int>(y);
+		int mapX = x + m_map[0].size() / 2.;
+		int mapY = y + m_map.size() / 2.;
 
 		// Check if within map bounds
 		if (mapX >= 0 && mapX < m_map[0].size() && mapY >= 0 && mapY < m_map.size()) {
@@ -395,21 +386,25 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 		}
 	}
 
-	if (m_fileWriteCounter % 2 == 0) {
+	if (m_fileWriteCounter % 5 == 0) {
 		emit pointCloudCaluculated(points);
 	}
+	if (m_fileWriteCounter % 20 == 0) {
+		std::cout << m_map;
+	}
 	m_fileWriteCounter++;
-
 }
 
 std::ostream &operator<<(std::ostream &os, const RobotTrajectoryController::Map &map)
 {
+	os << "========================================\n";
 	for (size_t i = 0; i < map.size(); i++) {
 		for (size_t j = 0; j < map[i].size(); j++) {
 			os << (map[i][j] ? '#' : ' ');
 		}
 		os << std::endl;
 	}
+	os << "========================================\n";
 	return os;
 }
 

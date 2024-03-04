@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "lidarMapper.h"
 #include "robotTrajectoryController.h"
 #include "ui_mainwindow.h"
 #include <QDebug>
@@ -372,12 +373,6 @@ double MainWindow::localRotationError(QPair<double, double> point)
 
 void MainWindow::on_pushButton_9_clicked() //start button
 {
-	m_lidarMapper->show();
-	m_lidarMapper->activateWindow();
-
-	connect(m_trajectoryController, &RobotTrajectoryController::pointCloudCaluculated,
-			m_lidarMapper, &LidarMapper::on_pointCloudCalculatedShow, Qt::QueuedConnection);
-
 	//ziskanie joystickov
 	instance = QJoysticks::getInstance();
 	forwardspeed = 0;
@@ -451,6 +446,19 @@ void MainWindow::on_pushButton_clicked()
 		useCamera1 = true;
 		ui->pushButton->setText("use laser");
 	}
+}
+
+void MainWindow::on_showMapButton_clicked()
+{
+	disconnect(m_connection);
+
+	m_lidarMapper = new LidarMapper(this);
+	m_lidarMapper->show();
+	m_lidarMapper->activateWindow();
+
+	m_connection = connect(m_trajectoryController, &RobotTrajectoryController::pointCloudCaluculated,
+			m_lidarMapper, &LidarMapper::on_pointCloudCalculatedShow, Qt::QueuedConnection);
+
 }
 
 void MainWindow::timeout()

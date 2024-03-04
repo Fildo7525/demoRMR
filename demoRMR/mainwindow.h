@@ -67,6 +67,9 @@ private slots:
 	void on_pushButton_4_clicked();
 
 	void on_pushButton_clicked();
+
+	void on_showMapButton_clicked();
+
 	bool updateTarget(QLineEdit *lineEdit, double &controller);
 	void onLinSubmitButtonClicked(bool clicked);
 	void onArcSubmitButtonClicked(bool clicked);
@@ -99,6 +102,7 @@ private:
 	//--skuste tu nic nevymazat... pridavajte co chcete, ale pri odoberani by sa mohol stat nejaky drobny problem, co bude vyhadzovat chyby
 	Ui::MainWindow *ui;
 	LidarMapper *m_lidarMapper;
+	QMetaObject::Connection m_connection;
 
 	int updateLaserPicture;
 	LaserMeasurement copyOfLaserData;
