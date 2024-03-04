@@ -484,6 +484,7 @@ void MainWindow::onArcSubmitButtonClicked(bool clicked)
 	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
 
 	if (ok1 && ok2) {
+		// TODO: firstly rotat the robot so that the robot is facing the target in range <-PI/4, PI/4>.
 		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
 	}
 }

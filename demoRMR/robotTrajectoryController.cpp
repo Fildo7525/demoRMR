@@ -19,6 +19,7 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	, m_rotationSpeed(0)
 	, m_map(300, std::vector<bool>(300, false))
 	, m_fileWriteCounter(0)
+	, m_arcExpected(false)
 {
 	m_accelerationTimer.setInterval(timerInterval);
 	m_accelerationTimer.setSingleShot(false);
@@ -35,6 +36,7 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 
 	connect(this, &RobotTrajectoryController::requestMovement, this, &RobotTrajectoryController::on_requestMovement_move, Qt::QueuedConnection);
 	connect(this, &RobotTrajectoryController::requestRotation, this, &RobotTrajectoryController::on_requestRotation_move, Qt::QueuedConnection);
+	connect(this, &RobotTrajectoryController::requestArc, this, &RobotTrajectoryController::on_requestArc_move, Qt::QueuedConnection);
 
 	MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
 	connect(this, &RobotTrajectoryController::pointCloudCaluculated, win->m_lidarMapper, &LidarMapper::on_pointCloudCalculated_show, Qt::QueuedConnection);
@@ -198,9 +200,9 @@ double RobotTrajectoryController::localRotationError()
 void RobotTrajectoryController::on_stoppingTimerTimeout_stop()
 {
 	m_robot->setTranslationSpeed(0);
+	m_movementType = MovementType::None;
 	m_forwardSpeed = 0;
 	m_rotationSpeed = 0;
-	m_movementType = MovementType::None;
 
 	m_accelerationTimer.stop();
 	m_positionTimer.stop();
@@ -208,7 +210,6 @@ void RobotTrajectoryController::on_stoppingTimerTimeout_stop()
 
 	// m_stoppingTimer.setInterval(3'000);
 	m_stopped = true;
-	m_movementType = MovementType::None;
 }
 
 void RobotTrajectoryController::on_accelerationTimerTimeout_control()
@@ -249,6 +250,7 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 {
 	static double error, maxCorrection;
+	MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
 
 	if (m_movementType == MovementType::Rotation) {
 		error = localRotationError();
@@ -260,18 +262,21 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		maxCorrection = std::abs((std::sin(rotError) * error) * 1.1);
 	}
 	else if (m_movementType == MovementType::Arc) {
-		double fde = finalDistanceError();
-		error = fde; // + lde * localRotationError();
-		maxCorrection = 0.1;
+		error = localDistanceError();
+		maxCorrection = 0.05;
 	}
 
 	// qDebug() << "Error: " << error << " maxCorrection: " << maxCorrection;
 	if (std::abs(error) < maxCorrection) {
 		// qDebug() << "Error is less than " << maxCorrection << " It's " << maxCorrection;
 
-		if (m_movementType == MovementType::Rotation) {
+		if (m_movementType == MovementType::Rotation && !m_arcExpected) {
 			qDebug() << "Rotation finished, requesting movement";
 			emit requestMovement(localDistanceError());
+		}
+		else if (m_movementType == MovementType::Rotation && m_arcExpected) {
+			qDebug() << "Rotation finished, requesting arc";
+			emit requestArc(localDistanceError(), localRotationError());
 		}
 		else if (m_movementType == MovementType::Forward && finalDistanceError() > 0.05) {
 			if (m_points.size() > 1)
@@ -279,7 +284,16 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 
 			emit requestRotation(localRotationError());
 		}
-		on_stoppingTimerTimeout_stop();
+		else if (m_movementType == MovementType::Arc) {
+			if (m_points.size() > 1)
+				m_points.removeFirst();
+			// qDebug() << "Arc finished, requesting movement. Local distance error: " << localDistanceError() << " Local rotation error: " << localRotationError();
+			emit requestArc(localDistanceError(), localRotationError());
+		}
+
+		if (m_movementType == MovementType::Rotation || m_movementType == MovementType::Forward || m_points.size() == 1) {
+			on_stoppingTimerTimeout_stop();
+		}
 		// qDebug() << "Final destination reached final distance with movement: " << movementTypeToString(m_movementType) << " error: " << finalDistanceError();
 		return;
 	}
@@ -296,7 +310,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		setTranslationSpeed(u);
 	}
 	else if (m_movementType == MovementType::Arc) {
-		u = m_controller->computeFromError(error, true);
+		u = m_controller->computeFromError(finalDistanceError(), true);
 		double o;
 		if (std::abs(localRotationError()) > 0.1) {
 			double lre = localRotationError();
@@ -307,13 +321,9 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 			o = 3200;
 		}
 		// qDebug() << "Distance error: " << error << " Rotation error: " << localRotationError() << " u: " << u << " o: " << o;
-		// MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
-		// double x = win->ui->targetXLine->text().toDouble();
-		// double y = win->ui->targetYLine->text().toDouble();
-		// qDebug() << "Akcny zasah u: " << u << " o: " << o;
+		// qDebug() << "Akcny zasah u: " << u << " o: " << o << " Robot x: " << win->m_x << " Robot y: " << win->m_y << " dist err: " << localDistanceError();
 		m_robot->setArcSpeed(u, o);
 	}
-
 	// qDebug() << "Akcny zasah: " << u;
 }
 
@@ -336,6 +346,12 @@ void RobotTrajectoryController::handleLinResults(double distance, double rotatio
 void RobotTrajectoryController::handleArcResults(double distance, double rotation, QVector<QPointF> points)
 {
 	m_points = points;
+	if (rotation > PI/4 || rotation < -PI/4) {
+		m_arcExpected = true;
+		rotateRobotTo(rotation);
+		return;
+	}
+
 	moveByArcTo(distance, rotation);
 }
 
@@ -347,6 +363,11 @@ void RobotTrajectoryController::on_requestMovement_move(double distance)
 void RobotTrajectoryController::on_requestRotation_move(double rotation)
 {
 	rotateRobotTo(rotation);
+}
+
+void RobotTrajectoryController::on_requestArc_move(double distance, double rotation)
+{
+	moveByArcTo(distance, rotation);
 }
 
 void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData)

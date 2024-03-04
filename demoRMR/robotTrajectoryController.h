@@ -67,6 +67,7 @@ public slots:
 
 	void on_requestMovement_move(double distance);
 	void on_requestRotation_move(double rotation);
+	void on_requestArc_move(double distance, double rotation);
 
 	void on_lidarDataReady_map(LaserMeasurement laserData);
 
@@ -77,6 +78,7 @@ private:
 signals:
 	void requestMovement(double distance);
 	void requestRotation(double rotation);
+	void requestArc(double distance, double rotation);
 
 private:
 	Robot *m_robot;
@@ -105,6 +107,7 @@ private:
 	double m_targetOmega;
 
 	int m_fileWriteCounter;
+	bool m_arcExpected;
 	Map m_map;
 };
 
