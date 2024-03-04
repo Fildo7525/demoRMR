@@ -238,9 +238,9 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 	}
 }
 
-static QVector<double> generateSequence(const QPointF &min, const QPointF &max, const QPointF &line)
+static QVector<QPointF> generateSequence(const QPointF &min, const QPointF &max, const QPointF &line)
 {
-	QVector<double> ret;
+	QVector<QPointF> ret;
 
 	const double h = std::hypot(max.x() - min.x(), max.y() - min.y());
 	const double dif = (max.x() - min.x()) / h;
@@ -248,13 +248,11 @@ static QVector<double> generateSequence(const QPointF &min, const QPointF &max, 
 
 	double var = min.x() + dif;
 	while (var < max.x()-1) {
-		ret.push_back(var);
+		ret.push_back({var, line.x() * var + line.y()});
 		var += dif;
 	}
-	// for (double var = min.x() + dif; var < max.x(); var += dif) {
-	// 	ret.push_back(var);
-	// }
-	ret.push_back(max.x());
+
+	ret.push_back(max);
 
 	return ret;
 }
@@ -285,17 +283,8 @@ void MainWindow::_calculateTrajectory()
 	QPointF line = computeLineParameters(min, max);
 	qDebug() << "Line: " << line;
 
-	QVector<double> X = generateSequence(min, max, line);
-	qDebug() << "X: " << X;
-
-	QVector<QPointF> points;
-
-	std::transform(X.begin(), X.end(), std::back_inserter(points), [&line](const double &var) {
-		return QPointF(var, line.x() * var + line.y());
-	});
-	// for (const double &var : X) {
-	// 	points.push_back({ var, line.x() * var + line.y() });
-	// }
+	QVector<QPointF> points = generateSequence(min, max, line);
+	qDebug() << "Points: " << points;
 
 	// qDebug() << "Points: " << points;
 	emit linResultsReady(distance, angle, points);
