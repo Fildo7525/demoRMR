@@ -209,7 +209,6 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 	if (isNear(m_forwardSpeed) || isNear(m_rotationSpeed)) {
 		m_accelerationTimer.stop();
 		m_stoppingTimer.start();
-		return;
 	}
 
 	static auto limit = [] (double &speed, const double target, double rate) {

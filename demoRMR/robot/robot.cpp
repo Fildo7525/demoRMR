@@ -94,6 +94,9 @@ void Robot::robotprocess()
 		if ((rob_recv_len = ::recvfrom(rob_s, (char *)&buff, sizeof(char) * 50000, 0, (struct sockaddr *)&rob_si_other, &rob_slen)) == -1) {
 			continue;
 		}
+		if (rob_si_other.sin_addr.s_addr != inet_addr(robot_ipaddress.data())) {
+			continue;
+		}
 		//https://i.pinimg.com/236x/1b/91/34/1b9134e6a5d2ea2e5447651686f60520--lol-funny-funny-shit.jpg
 		//tu mame data..zavolame si funkciu
 
@@ -183,6 +186,9 @@ void Robot::laserprocess()
 		if (readyFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
 			break;
 		if ((las_recv_len = ::recvfrom(las_s, (char *)&measure.Data, sizeof(LaserData) * 1000, 0, (struct sockaddr *)&las_si_other, &las_slen)) == -1) {
+			continue;
+		}
+		if (las_si_other.sin_addr.s_addr != inet_addr(laser_ipaddress.data())) {
 			continue;
 		}
 		measure.numberOfScans = las_recv_len / sizeof(LaserData);
