@@ -10,6 +10,8 @@
 #include <QPushButton>
 #include <QThread>
 #include <cmath>
+
+static const QString IP_ADDRESSES[2] {"127.0.0.1", "192.168.1."};
 ///TOTO JE DEMO PROGRAM...AK SI HO NASIEL NA PC V LABAKU NEPREPISUJ NIC,ALE SKOPIRUJ SI MA NIEKAM DO INEHO FOLDERA
 /// AK HO MAS Z GITU A ROBIS NA LABAKOVOM PC, TAK SI HO VLOZ DO FOLDERA KTORY JE JASNE ODLISITELNY OD TVOJICH KOLEGOV
 /// NASLEDNE V POLOZKE Projects SKONTROLUJ CI JE VYPNUTY shadow build...
@@ -42,6 +44,11 @@ MainWindow::MainWindow(QWidget *parent)
 	// ipaddress = "192.168.1.12";
 	ui->setupUi(this);
 	m_lidarMapper = new LidarMapper(this);
+
+	ui->comboBox->addItem(IP_ADDRESSES[0]);
+	for (size_t i = 11; i < 15; i++) {
+		ui->comboBox->addItem(IP_ADDRESSES[1]+QString::number(i));
+	}
 
 	datacounter = 0;
 	//  timer = new QTimer(this);
@@ -369,6 +376,8 @@ double MainWindow::localRotationError(QPair<double, double> point)
 
 void MainWindow::on_pushButton_9_clicked() //start button
 {
+	ipaddress = ui->comboBox->currentText().toStdString();
+
 	//ziskanie joystickov
 	instance = QJoysticks::getInstance();
 	forwardspeed = 0;
