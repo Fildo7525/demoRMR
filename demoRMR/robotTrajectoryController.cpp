@@ -17,9 +17,10 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	, m_rotationController(nullptr)
 	, m_forwardSpeed(0)
 	, m_rotationSpeed(0)
-	, m_map(50, std::vector<bool>(50, false))
+	, m_lastArcSpeed(0)
 	, m_fileWriteCounter(0)
 	, m_arcExpected(false)
+	, m_map(50, std::vector<bool>(50, false))
 {
 	m_accelerationTimer.setInterval(timerInterval);
 	m_accelerationTimer.setSingleShot(false);
@@ -93,26 +94,13 @@ void RobotTrajectoryController::setRotationSpeed(double omega, bool stopPosition
 void RobotTrajectoryController::setArcSpeed(double velocity, double omega, bool stopPositionTimer, double accelerationRate, double omegaRate)
 {
 	m_movementType = MovementType::Arc;
-	m_stoppingTimer.stop();
-
-	if (stopPositionTimer) {
-		m_positionTimer.stop();
+	if (velocity > m_lastArcSpeed + accelerationRate) {
+		velocity = m_lastArcSpeed + accelerationRate;
 	}
 
-	m_targetVelocity = velocity;
-	m_targetOmega = omega;
-	m_accelerationRate = accelerationRate;
-	m_omegaRate = omegaRate;
-
-	if (m_targetVelocity < m_forwardSpeed) {
-		m_accelerationRate = -m_accelerationRate;
-	}
-
-	if (m_targetOmega < m_rotationSpeed) {
-		m_omegaRate = -m_omegaRate;
-	}
-
-	m_accelerationTimer.start();
+	m_lastArcSpeed = velocity;
+	qDebug() << "Setting arc speed to " << velocity << " and " << omega;
+	m_robot->setArcSpeed(velocity, omega);
 }
 
 void RobotTrajectoryController::rotateRobotTo(double rotation)
@@ -228,11 +216,6 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 		limit(m_forwardSpeed, m_targetVelocity, m_accelerationRate);
 		m_robot->setTranslationSpeed(m_forwardSpeed);
 	}
-	else if (m_movementType == MovementType::Arc) {
-		limit(m_forwardSpeed, m_targetVelocity, m_accelerationRate);
-		limit(m_rotationSpeed, m_targetOmega, m_omegaRate);
-		m_robot->setArcSpeed(m_forwardSpeed, m_rotationSpeed);
-	}
 }
 
 void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
@@ -300,7 +283,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		else {
 			o = 3200;
 		}
-		m_robot->setArcSpeed(u, o);
+		setArcSpeed(u, o);
 	}
 }
 

@@ -105,6 +105,7 @@ private:
 
 	double m_targetPosition;
 	double m_targetOmega;
+	double m_lastArcSpeed;
 
 	int m_fileWriteCounter;
 	bool m_arcExpected;
