@@ -466,7 +466,7 @@ void MainWindow::on_showMapButton_clicked()
 
 }
 
-void MainWindow::on_startMapScanButton_clicked()
+void MainWindow::on_startScanButton_clicked()
 {
 // Start:
 // XX.00 | YY.YY

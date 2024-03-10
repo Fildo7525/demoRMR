@@ -70,7 +70,7 @@ private slots:
 
 	void on_showMapButton_clicked();
 
-	void on_startMapScanButton_clicked();
+	void on_startScanButton_clicked();
 
 	bool updateTarget(QLineEdit *lineEdit, double &controller);
 	void onLinSubmitButtonClicked(bool clicked);
