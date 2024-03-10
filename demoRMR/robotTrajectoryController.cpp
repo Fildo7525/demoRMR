@@ -111,7 +111,7 @@ void RobotTrajectoryController::rotateRobotTo(double rotation)
 	m_accelerationTimer.stop();
 	m_stoppingTimer.stop();
 
-	m_controller = std::make_shared<PIDController>(1, 0, 0, rotation);
+	m_controller = std::make_shared<PIDController>(0.75, 0, 0, rotation);
 	m_positionTimer.start();
 }
 
