@@ -254,7 +254,18 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		else if (m_movementType == MovementType::Arc) {
 			if (m_points.size() > 1)
 				m_points.removeFirst();
-			emit requestArc(localDistanceError(), localRotationError());
+
+			double rotation = localRotationError();
+			if (rotation > PI/2 || rotation < -PI/2) {
+				m_arcExpected = true;
+				m_forwardSpeed = 0;
+				m_rotationSpeed = 0;
+				qDebug() << "Requesting rotation to " << rotation << " and distance " << localDistanceError() << " from arc movement.";
+				emit requestRotation(rotation);
+			}
+			else {
+				emit requestArc(localDistanceError(), localRotationError());
+			}
 		}
 
 		if (m_movementType == MovementType::Rotation || m_movementType == MovementType::Forward || m_points.size() == 1) {
@@ -300,13 +311,14 @@ void RobotTrajectoryController::onChangeRotationRotate(double speed)
 void RobotTrajectoryController::handleLinResults(double distance, double rotation, QVector<QPointF> points)
 {
 	m_points = points;
+	m_arcExpected = false;
 	rotateRobotTo(rotation);
 }
 
 void RobotTrajectoryController::handleArcResults(double distance, double rotation, QVector<QPointF> points)
 {
 	m_points = points;
-	if (rotation > PI/4 || rotation < -PI/4) {
+	if (rotation > PI/2 || rotation < -PI/2) {
 		m_arcExpected = true;
 		rotateRobotTo(rotation);
 		return;
@@ -371,9 +383,9 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 	if (m_fileWriteCounter % 5 == 0) {
 		emit pointCloudCaluculated(points);
 	}
-	if (m_fileWriteCounter % 20 == 0) {
-		std::cout << m_map;
-	}
+	// if (m_fileWriteCounter % 20 == 0) {
+	// 	std::cout << m_map;
+	// }
 	m_fileWriteCounter++;
 }
 

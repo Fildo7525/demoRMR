@@ -499,6 +499,8 @@ void MainWindow::on_startScanButton_clicked()
 		{3, 0.7},
 		{5, 0.6},
 		{5, 1.5},
+		{5, 0.6},
+		{3, 0.7},
 		{2.6, -0.8},
 		{1.5, -1.2}
 	};
