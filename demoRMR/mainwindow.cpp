@@ -467,8 +467,9 @@ void MainWindow::on_showMapButton_clicked()
 	disconnect(m_connection);
 
 	m_lidarMapper = new LidarMapper(this);
+	m_lidarMapper->setWindowFlags(Qt::Window);
 	m_lidarMapper->show();
-	m_lidarMapper->activateWindow();
+
 
 	m_connection = connect(m_trajectoryController, &RobotTrajectoryController::pointCloudCaluculated,
 			m_lidarMapper, &LidarMapper::on_pointCloudCalculatedShow, Qt::QueuedConnection);
