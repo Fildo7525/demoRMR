@@ -374,6 +374,15 @@ double MainWindow::localRotationError(QPair<double, double> point)
 	return -diff;
 }
 
+void MainWindow::on_pushButton_8_clicked()
+{
+	// Stop all the robot's movement. This will stop the position controller.
+	emit moveForward(0);
+
+	m_x = 0;
+	m_y = 0;
+}
+
 void MainWindow::on_pushButton_9_clicked() //start button
 {
 	ipaddress = ui->comboBox->currentText().toStdString();

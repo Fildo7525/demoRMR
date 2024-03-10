@@ -54,6 +54,8 @@ private:
 	void _calculateTrajectory(RobotTrajectoryController::MovementType type);
 
 private slots:
+	void on_pushButton_8_clicked();
+
 	void on_pushButton_9_clicked();
 
 	void on_pushButton_2_clicked();
