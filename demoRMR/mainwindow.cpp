@@ -362,14 +362,14 @@ double MainWindow::localRotationError(QPair<double, double> point)
 		m_mutex.unlock();
 	}
 
-	if (fi > PI / 2 && rot < -PI / 2) {
-		fi -= 2 * PI;
-	}
-	if (fi < -PI / 2 && rot > PI / 2) {
-		fi += 2 * PI;
-	}
-
 	diff = fi - rot;
+
+	if (diff > PI) {
+		diff -= 2 * PI;
+	}
+	if (diff < -PI) {
+		diff += 2 * PI;
+	}
 
 	return -diff;
 }
