@@ -15,6 +15,7 @@ public:
 
 private:
 	void paintEvent(QPaintEvent *event); // Q_DECL_OVERRIDE;
+	bool isInsertable(const QPointF &point);
 
 public slots:
 	void on_pointCloudCalculatedShow(QVector<QPointF> points);

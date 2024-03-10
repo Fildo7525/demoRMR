@@ -3,7 +3,9 @@
 #include <QDebug>
 #include <QPainter>
 #include <QThread>
-#include <qglobal.h>
+#include <cmath>
+
+#define POINT_RADIUS 5
 
 LidarMapper::LidarMapper(QWidget *parent)
 	: QDialog(parent)
@@ -38,7 +40,7 @@ void LidarMapper::on_pointCloudCalculatedShow(QVector<QPointF> points)
 	// m_points.append(points);
 	for (const QPointF &point : points) {
 		auto p = point + m_rect.center();
-		if (m_rect.contains(p.x(), p.y()) || !m_points.contains(p)) {
+		if (isInsertable(p)) {
 			m_points.push_back(p);
 		}
 	}
@@ -47,3 +49,18 @@ void LidarMapper::on_pointCloudCalculatedShow(QVector<QPointF> points)
 	update();
 }
 
+
+bool LidarMapper::isInsertable(const QPointF &point)
+{
+	if (!m_rect.contains(point.x(), point.y())) {
+		return false;
+	}
+
+	for(const auto &p : m_points) {
+		if (std::abs(std::sqrt(std::pow(p.x() - point.x(), 2) + std::pow(p.y() - point.y(), 2))) < POINT_RADIUS) {
+			return false;
+		}
+	}
+
+	return true;
+}
