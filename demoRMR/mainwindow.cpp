@@ -263,23 +263,6 @@ static QVector<QPointF> generateSequence(const QPointF &min, const QPointF &max,
 	return ret;
 }
 
-static QPointF computeLineParameters(QPointF p1, QPointF p2)
-{
-	QPointF line;
-	// Compute slope (a)
-	if (p1.x() != p2.x()) {
-		auto x = (p2.y() - p1.y()) / (p2.x() - p1.x());
-		line.setX(x);
-	}
-	else {
-		// If the line is vertical, slope is infinity, so set a to a large value
-		line.setY(1e9);
-	}
-	// Compute intercept (b)
-	line.ry() = p1.y() - line.x() * p1.x();
-	return line;
-}
-
 void MainWindow::_calculateTrajectory(RobotTrajectoryController::MovementType type)
 {
 	auto [distance, angle] = calculateTrajectory();

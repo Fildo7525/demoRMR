@@ -4,7 +4,27 @@
 #include "robotTrajectoryController.h"
 #include <QDebug>
 #include <QTimer>
+#include <algorithm>
 #include <memory>
+
+#define TILE_SIZE 14
+
+QPointF computeLineParameters(QPointF p1, QPointF p2)
+{
+	QPointF line;
+	// Compute slope (a)
+	if (p1.x() != p2.x()) {
+		auto x = (p2.y() - p1.y()) / (p2.x() - p1.x());
+		line.setX(x);
+	}
+	else {
+		// If the line is vertical, slope is infinity, so set a to a large value
+		line.setY(1e9);
+	}
+	// Compute intercept (b)
+	line.ry() = p1.y() - line.x() * p1.x();
+	return line;
+}
 
 RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *window, double timerInterval)
 	: QObject()
@@ -20,7 +40,7 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	, m_lastArcSpeed(0)
 	, m_fileWriteCounter(0)
 	, m_arcExpected(false)
-	, m_map(50, std::vector<bool>(50, false))
+	, m_map(50, std::vector<int>(50, 0))
 {
 	m_accelerationTimer.setInterval(timerInterval);
 	m_accelerationTimer.setSingleShot(false);
@@ -99,7 +119,6 @@ void RobotTrajectoryController::setArcSpeed(double velocity, double omega, bool 
 	}
 
 	m_lastArcSpeed = velocity;
-	qDebug() << "Setting arc speed to " << velocity << " and " << omega;
 	m_robot->setArcSpeed(velocity, omega);
 }
 
@@ -260,7 +279,6 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 				m_arcExpected = true;
 				m_forwardSpeed = 0;
 				m_rotationSpeed = 0;
-				qDebug() << "Requesting rotation to " << rotation << " and distance " << localDistanceError() << " from arc movement.";
 				emit requestRotation(rotation);
 			}
 			else {
@@ -355,7 +373,7 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 		return;
 	}
 
-	for (size_t i = 0; i < numberOfScans; i++) {
+	for (size_t i = 0; i < numberOfScans; i += 2) {
 		double distance = laserData.Data[i].scanDistance / 20.;
 		double scanAngle = (360 - laserData.Data[i].scanAngle + 90) * TO_RADIANS;
 
@@ -368,24 +386,39 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 
 		points.append(QPointF(x, y));
 
-		x /= 14;
-		y /= 14;
+		x /= TILE_SIZE;
+		y /= TILE_SIZE;
 
 		int mapX = x + m_map[0].size() / 2.;
 		int mapY = y + m_map.size() / 2.;
 
 		// Check if within map bounds
 		if (mapX >= 0 && mapX < m_map[0].size() && mapY >= 0 && mapY < m_map.size()) {
-			m_map[mapY][mapX] = true;
+			m_map[mapY][mapX] += 1;
+
+			// auto line = computeLineParameters(QPointF(robotX, robotY), QPointF(x, y));
+			// auto loweringDiff = robotX - x;
+			//
+			// double tmpX, tmpY;
+			// for (double pt = robotX/20.; pt < x; pt+=TILE_SIZE) {
+			// 	tmpX = pt / TILE_SIZE;
+			// 	tmpY = (line.x() * pt + line.y()) / TILE_SIZE;
+			//
+			// 	tmpX += m_map[0].size() / 2.;
+			// 	tmpY += m_map.size() / 2.;
+			//
+			// 	qDebug() << tmpX << " " << tmpY;
+			// 	m_map[tmpY][tmpX] = std::clamp(m_map[tmpY][tmpX], -1000, 1000);
+			// }
 		}
 	}
 
 	if (m_fileWriteCounter % 5 == 0) {
 		emit pointCloudCaluculated(points);
 	}
-	// if (m_fileWriteCounter % 20 == 0) {
-	// 	std::cout << m_map;
-	// }
+	if (m_fileWriteCounter % 20 == 0) {
+		std::cout << m_map;
+	}
 	m_fileWriteCounter++;
 }
 
@@ -394,7 +427,7 @@ std::ostream &operator<<(std::ostream &os, const RobotTrajectoryController::Map 
 	os << "========================================\n";
 	for (size_t i = 0; i < map.size(); i++) {
 		for (size_t j = 0; j < map[i].size(); j++) {
-			os << (map[i][j] ? '#' : ' ');
+			os << (map[i][j] > 5 ? '#' : ' ');
 		}
 		os << std::endl;
 	}

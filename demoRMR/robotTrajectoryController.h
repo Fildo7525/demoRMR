@@ -11,6 +11,8 @@
 
 #define TO_RADIANS 3.14159 / 180.0
 
+QPointF computeLineParameters(QPointF p1, QPointF p2);
+
 class RobotTrajectoryController : public QObject
 {
 	Q_OBJECT
@@ -37,7 +39,7 @@ public:
 		return "None";
 	}
 
-	using Map = std::vector<std::vector<bool>>;
+	using Map = std::vector<std::vector<int>>;
 	RobotTrajectoryController(Robot *robot, QObject *window, double timerInterval = 100);
 
 	void setTranslationSpeed(double velocity, bool stopPositionTimer = false, double accelerationRate = 50);

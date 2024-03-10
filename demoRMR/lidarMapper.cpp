@@ -49,7 +49,6 @@ void LidarMapper::on_pointCloudCalculatedShow(QVector<QPointF> points)
 	update();
 }
 
-
 bool LidarMapper::isInsertable(const QPointF &point)
 {
 	if (!m_rect.contains(point.x(), point.y())) {
@@ -64,3 +63,4 @@ bool LidarMapper::isInsertable(const QPointF &point)
 
 	return true;
 }
+
