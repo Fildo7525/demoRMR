@@ -370,8 +370,7 @@ void MainWindow::on_pushButton_9_clicked() //start button
 {
 	ipaddress = ui->comboBox->currentText().toStdString();
 
-	//ziskanie joystickov
-	instance = QJoysticks::getInstance();
+    //ziskanie joystickov
 	forwardspeed = 0;
 	rotationspeed = 0;
 	//tu sa nastartuju vlakna ktore citaju data z lidaru a robota
@@ -395,16 +394,7 @@ void MainWindow::on_pushButton_9_clicked() //start button
 	robot.robotStart();
 
 
-	/// prepojenie joysticku s jeho callbackom... zas cez lambdu. neviem ci som to niekde spominal,ale lambdy su super. okrem toho mam este rad ternarne operatory a spolocneske hry ale to tiez nikoho nezaujima
-	/// co vas vlastne zaujima? citanie komentov asi nie, inak by ste citali toto a ze tu je blbosti
-	connect(instance, &QJoysticks::axisChanged, [this](const int js, const int axis, const qreal value) {
-		if (/*js==0 &&*/ axis == 1) {
-			forwardspeed = -value * 300;
-		}
-		if (/*js==0 &&*/ axis == 0) {
-			rotationspeed = -value * (3.14159 / 2.0);
-		}
-	});
+
 }
 
 void MainWindow::on_pushButton_2_clicked() //forward

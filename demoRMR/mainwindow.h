@@ -10,7 +10,6 @@
 #include "qthread.h"
 #include "robot.h"
 #include "robotTrajectoryController.h"
-#include <QJoysticks.h>
 #include <QMutex>
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/utility.hpp>
@@ -119,8 +118,6 @@ private:
 	int datacounter;
 
 	QTimer *timer;
-
-	QJoysticks *instance;
 
 	int lastLeftEncoder;
 	int lastRightEncoder;

@@ -6,8 +6,11 @@
 
 QT       += core gui
 
+QMAKE_CXXFLAGS += -std=c++17
+
+CONFIG += c++17
+
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
-include ($$PWD/../QJoysticks-master/QJoysticks.pri)
 TARGET = demoRMR
 TEMPLATE = app
 win32 {
@@ -83,10 +86,13 @@ INCLUDEPATH += /usr/include/opencv4/
 SOURCES += main.cpp \
         mainwindow.cpp \
         pidcontroller.cpp \
-        robotTrajectoryController.cpp
+        robotTrajectoryController.cpp \
+        lidarMapper.cpp
 
 HEADERS  += mainwindow.h \
             pidcontroller.h \
-            robotTrajectoryController.h
+            robotTrajectoryController.h \
+            lidarMapper.h
 
-FORMS    += mainwindow.ui
+FORMS    += mainwindow.ui \
+            lidarMapper.ui
