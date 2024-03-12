@@ -244,7 +244,12 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 
 	if (m_movementType == MovementType::Rotation) {
 		error = localRotationError();
-		maxCorrection = 0.1;
+		if (m_arcExpected) {
+			maxCorrection = 0.3;
+		}
+		else {
+			maxCorrection = 0.1;
+		}
 	}
 	else if (m_movementType == MovementType::Forward) {
 		error = localDistanceError();
