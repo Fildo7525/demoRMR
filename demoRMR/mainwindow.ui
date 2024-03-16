@@ -183,40 +183,11 @@
           </property>
          </widget>
         </item>
-        <item alignment="Qt::AlignHCenter">
-         <widget class="QPushButton" name="pushButton_7">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>162</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="text">
-           <string>Reset Laser</string>
-          </property>
-         </widget>
-        </item>
        </layout>
       </item>
       <item row="3" column="1">
        <layout class="QGridLayout" name="gridLayout">
-        <item row="1" column="1">
-         <widget class="QLineEdit" name="targetXLine"/>
-        </item>
-        <item row="6" column="0">
-         <widget class="QLabel" name="label_7">
-          <property name="text">
-           <string>distance to target</string>
-          </property>
-         </widget>
-        </item>
-        <item row="7" column="1">
+        <item row="8" column="1">
          <spacer name="verticalSpacer">
           <property name="orientation">
            <enum>Qt::Vertical</enum>
@@ -229,24 +200,67 @@
           </property>
          </spacer>
         </item>
-        <item row="6" column="1">
-         <widget class="QLineEdit" name="distanceToTarget"/>
-        </item>
-        <item row="2" column="0">
-         <widget class="QLabel" name="label_5">
+        <item row="3" column="0">
+         <widget class="QPushButton" name="linSubmitTargetButton">
           <property name="text">
-           <string>Target Y</string>
+           <string>Lin Submit</string>
           </property>
          </widget>
         </item>
-        <item row="5" column="0">
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="targetYLine"/>
+        </item>
+        <item row="7" column="0">
+         <widget class="QLabel" name="label_7">
+          <property name="text">
+           <string>distance to target</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="0">
          <widget class="QLabel" name="label_6">
           <property name="text">
            <string>angle to target</string>
           </property>
          </widget>
         </item>
-        <item row="8" column="1">
+        <item row="6" column="1">
+         <widget class="QLineEdit" name="angleToTarget"/>
+        </item>
+        <item row="5" column="1">
+         <spacer name="verticalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="3" column="1">
+         <widget class="QPushButton" name="arcSubmitTargetButton">
+          <property name="text">
+           <string>Arc Submit</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="1">
+         <widget class="QLineEdit" name="distanceToTarget"/>
+        </item>
+        <item row="10" column="0">
+         <widget class="QPushButton" name="startScanButton">
+          <property name="text">
+           <string>Start scan</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="targetXLine"/>
+        </item>
+        <item row="9" column="1">
          <layout class="QGridLayout" name="gridLayout_3">
           <item row="1" column="1">
            <widget class="QLineEdit" name="lineEdit_3">
@@ -319,23 +333,6 @@
           </item>
          </layout>
         </item>
-        <item row="3" column="0">
-         <widget class="QPushButton" name="linSubmitTargetButton">
-          <property name="text">
-           <string>Lin Submit</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1">
-         <widget class="QPushButton" name="arcSubmitTargetButton">
-          <property name="text">
-           <string>Arc Submit</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QLineEdit" name="targetYLine"/>
-        </item>
         <item row="1" column="0">
          <widget class="QLabel" name="label_4">
           <property name="text">
@@ -343,33 +340,24 @@
           </property>
          </widget>
         </item>
-        <item row="4" column="1">
-         <spacer name="verticalSpacer_2">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Target Y</string>
           </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
-           </size>
-          </property>
-         </spacer>
+         </widget>
         </item>
-        <item row="5" column="1">
-         <widget class="QLineEdit" name="angleToTarget"/>
-        </item>
-        <item row="9" column="1">
+        <item row="10" column="1">
          <widget class="QPushButton" name="showMapButton">
           <property name="text">
            <string>Show map</string>
           </property>
          </widget>
         </item>
-        <item row="9" column="0">
-         <widget class="QPushButton" name="startScanButton">
+        <item row="4" column="1">
+         <widget class="QPushButton" name="pathPlannerButton">
           <property name="text">
-           <string>Start scan</string>
+           <string>Plan path</string>
           </property>
          </widget>
         </item>
