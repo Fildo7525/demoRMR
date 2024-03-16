@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <memory>
 
-#define TILE_SIZE 14
+#define TILE_SIZE 10
 
 QPointF computeLineParameters(QPointF p1, QPointF p2)
 {
@@ -387,7 +387,7 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 		x /= TILE_SIZE;
 		y /= TILE_SIZE;
 
-		int mapX = x + m_map[0].size() / 2.;
+		int mapX = x + m_map[0].size() / 4.;
 		int mapY = y + m_map.size() / 2.;
 
 		// Check if within map bounds
