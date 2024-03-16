@@ -88,6 +88,7 @@ void RobotTrajectoryController::setTranslationSpeed(double velocity, bool stopPo
 void RobotTrajectoryController::setRotationSpeed(double omega, bool stopPositionTimer, double accelerationRate)
 {
 	m_forwardSpeed = 0;
+	m_lastArcSpeed = 0;
 	m_movementType = MovementType::Rotation;
 	m_stoppingTimer.stop();
 
