@@ -415,7 +415,9 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 		emit pointCloudCaluculated(points);
 	}
 	if (m_fileWriteCounter % 20 == 0) {
-		std::cout << m_map;
+		std::fstream file("map.txt", std::ios::out);
+		file << m_map;
+		file.close();
 	}
 	m_fileWriteCounter++;
 }
