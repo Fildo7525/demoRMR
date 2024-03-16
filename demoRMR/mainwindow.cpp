@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "lidarMapper.h"
-#include "robotTrajectoryController.h"
 #include "ui_mainwindow.h"
+
 #include <QDebug>
 #include <QLineEdit>
 #include <QObject>
@@ -33,10 +33,11 @@ MainWindow::MainWindow(QWidget *parent)
 	, m_y(0)
 	, m_xTarget(0)
 	, m_yTarget(0)
-	, m_trajectoryThread(new QThread(this))
 	, m_controllerThread(new QThread(this))
+	, m_plannerThread(new QThread(this))
 	, m_robotStartupLocation(false)
 {
+	qDebug() << "MainWindow starting";
 	//tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
 	ipaddress = "127.0.0.1"; //192.168.1.12 toto je na niektory realny robot.. na lokal budete davat "127.0.0.1"
 							 //  cap.open("http://192.168.1.11:8000/stream.mjpg");
@@ -59,6 +60,8 @@ MainWindow::MainWindow(QWidget *parent)
 	// Object for managing the robot speed interactions.
 	m_trajectoryController = std::make_shared<RobotTrajectoryController>(&robot, this);
 
+	m_floodPlanner = std::make_shared<FloodPlanner>("map.txt");
+
 	// Creating all connections
 	connect(this, &MainWindow::moveForward, m_trajectoryController.get(), &RobotTrajectoryController::onMoveForwardMove, Qt::QueuedConnection);
 	connect(this, &MainWindow::changeRotation, m_trajectoryController.get(), &RobotTrajectoryController::onChangeRotationRotate, Qt::QueuedConnection);
@@ -73,18 +76,19 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
 
 	// Starting threads
-	m_trajectoryThread->start();
 	m_controllerThread->start();
+	m_plannerThread->start();
 
 	// std::cout << __FUNCTION__ << " " << std::this_thread::get_id() << std::endl;
 
 	m_trajectoryController->moveToThread(m_controllerThread);
+	m_floodPlanner->moveToThread(m_plannerThread);
 }
 
 MainWindow::~MainWindow()
 {
 	m_controllerThread->exit(0);
-	m_trajectoryThread->exit(0);
+	m_plannerThread->exit(0);
 	delete ui;
 }
 
@@ -480,6 +484,20 @@ void MainWindow::on_startScanButton_clicked()
 	};
 	auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
 	emit arcResultsReady(distance, angle, points);
+}
+
+void MainWindow::on_pathPlannerButton_clicked()
+{
+	bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
+	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
+	if (!ok1 || !ok2) {
+		return;
+	}
+
+	QPoint start(m_x, m_y);
+	QPoint end(m_xTarget, m_yTarget);
+
+	emit requestPath(start, end);
 }
 
 void MainWindow::timeout()
