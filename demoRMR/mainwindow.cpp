@@ -57,16 +57,17 @@ MainWindow::MainWindow(QWidget *parent)
 	useCamera1 = false;
 
 	// Object for managing the robot speed interactions.
-	m_trajectoryController = new RobotTrajectoryController(&robot, this);
+	m_trajectoryController = std::make_shared<RobotTrajectoryController>(&robot, this);
 
 	// Creating all connections
-	connect(this, &MainWindow::moveForward, m_trajectoryController, &RobotTrajectoryController::onMoveForwardMove, Qt::QueuedConnection);
-	connect(this, &MainWindow::changeRotation, m_trajectoryController, &RobotTrajectoryController::onChangeRotationRotate, Qt::QueuedConnection);
+	connect(this, &MainWindow::moveForward, m_trajectoryController.get(), &RobotTrajectoryController::onMoveForwardMove, Qt::QueuedConnection);
+	connect(this, &MainWindow::changeRotation, m_trajectoryController.get(), &RobotTrajectoryController::onChangeRotationRotate, Qt::QueuedConnection);
 
-	connect(this, &MainWindow::linResultsReady, m_trajectoryController, &RobotTrajectoryController::handleLinResults, Qt::QueuedConnection);
-	connect(this, &MainWindow::arcResultsReady, m_trajectoryController, &RobotTrajectoryController::handleArcResults, Qt::QueuedConnection);
+	connect(this, &MainWindow::linResultsReady, m_trajectoryController.get(), &RobotTrajectoryController::handleLinResults, Qt::QueuedConnection);
+	connect(this, &MainWindow::arcResultsReady, m_trajectoryController.get(), &RobotTrajectoryController::handleArcResults, Qt::QueuedConnection);
 
-	connect(this, &MainWindow::lidarDataReady, m_trajectoryController, &RobotTrajectoryController::on_lidarDataReady_map, Qt::QueuedConnection);
+	connect(this, &MainWindow::lidarDataReady, m_trajectoryController.get(), &RobotTrajectoryController::on_lidarDataReady_map, Qt::QueuedConnection);
+	connect(this, &MainWindow::requestPath, m_floodPlanner.get(), &FloodPlanner::on_requestPath_plan, Qt::QueuedConnection);
 
 	connect(ui->linSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onLinSubmitButtonClicked, Qt::QueuedConnection);
 	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
@@ -85,7 +86,6 @@ MainWindow::~MainWindow()
 	m_controllerThread->exit(0);
 	m_trajectoryThread->exit(0);
 	delete ui;
-	delete m_trajectoryController;
 }
 
 void MainWindow::paintEvent(QPaintEvent *event)
@@ -444,7 +444,7 @@ void MainWindow::on_showMapButton_clicked()
 	m_lidarMapper->show();
 
 
-	m_connection = connect(m_trajectoryController, &RobotTrajectoryController::pointCloudCaluculated,
+	m_connection = connect(m_trajectoryController.get(), &RobotTrajectoryController::pointCloudCaluculated,
 			m_lidarMapper, &LidarMapper::on_pointCloudCalculatedShow, Qt::QueuedConnection);
 
 }

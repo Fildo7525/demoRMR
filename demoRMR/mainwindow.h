@@ -112,7 +112,8 @@ private:
 	std::string ipaddress;
 	Robot robot;
 
-	RobotTrajectoryController *m_trajectoryController;
+	std::shared_ptr<RobotTrajectoryController> m_trajectoryController;
+	std::shared_ptr<FloodPlanner> m_floodPlanner;
 
 	TKobukiData robotdata;
 	int datacounter;
