@@ -206,18 +206,34 @@
       </item>
       <item row="3" column="1">
        <layout class="QGridLayout" name="gridLayout">
-        <item row="1" column="1">
-         <widget class="QLineEdit" name="targetXLine"/>
-        </item>
-        <item row="6" column="0">
-         <widget class="QLabel" name="label_7">
+        <item row="10" column="0">
+         <widget class="QPushButton" name="startScanButton">
           <property name="text">
-           <string>distance to target</string>
+           <string>Start scan</string>
           </property>
          </widget>
         </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="targetXLine"/>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Target Y</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1">
+         <widget class="QLineEdit" name="angleToTarget"/>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="targetYLine"/>
+        </item>
         <item row="7" column="1">
-         <spacer name="verticalSpacer">
+         <widget class="QLineEdit" name="distanceToTarget"/>
+        </item>
+        <item row="5" column="1">
+         <spacer name="verticalSpacer_2">
           <property name="orientation">
            <enum>Qt::Vertical</enum>
           </property>
@@ -229,24 +245,28 @@
           </property>
          </spacer>
         </item>
-        <item row="6" column="1">
-         <widget class="QLineEdit" name="distanceToTarget"/>
-        </item>
-        <item row="2" column="0">
-         <widget class="QLabel" name="label_5">
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_4">
           <property name="text">
-           <string>Target Y</string>
+           <string>Target X</string>
           </property>
          </widget>
         </item>
-        <item row="5" column="0">
+        <item row="6" column="0">
          <widget class="QLabel" name="label_6">
           <property name="text">
            <string>angle to target</string>
           </property>
          </widget>
         </item>
-        <item row="8" column="1">
+        <item row="3" column="0">
+         <widget class="QPushButton" name="linSubmitTargetButton">
+          <property name="text">
+           <string>Lin Submit</string>
+          </property>
+         </widget>
+        </item>
+        <item row="9" column="1">
          <layout class="QGridLayout" name="gridLayout_3">
           <item row="1" column="1">
            <widget class="QLineEdit" name="lineEdit_3">
@@ -319,13 +339,6 @@
           </item>
          </layout>
         </item>
-        <item row="3" column="0">
-         <widget class="QPushButton" name="linSubmitTargetButton">
-          <property name="text">
-           <string>Lin Submit</string>
-          </property>
-         </widget>
-        </item>
         <item row="3" column="1">
          <widget class="QPushButton" name="arcSubmitTargetButton">
           <property name="text">
@@ -333,18 +346,15 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="1">
-         <widget class="QLineEdit" name="targetYLine"/>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_4">
+        <item row="10" column="1">
+         <widget class="QPushButton" name="showMapButton">
           <property name="text">
-           <string>Target X</string>
+           <string>Show map</string>
           </property>
          </widget>
         </item>
-        <item row="4" column="1">
-         <spacer name="verticalSpacer_2">
+        <item row="8" column="1">
+         <spacer name="verticalSpacer">
           <property name="orientation">
            <enum>Qt::Vertical</enum>
           </property>
@@ -356,20 +366,17 @@
           </property>
          </spacer>
         </item>
-        <item row="5" column="1">
-         <widget class="QLineEdit" name="angleToTarget"/>
-        </item>
-        <item row="9" column="1">
-         <widget class="QPushButton" name="showMapButton">
+        <item row="7" column="0">
+         <widget class="QLabel" name="label_7">
           <property name="text">
-           <string>Show map</string>
+           <string>distance to target</string>
           </property>
          </widget>
         </item>
-        <item row="9" column="0">
-         <widget class="QPushButton" name="startScanButton">
+        <item row="4" column="1">
+         <widget class="QPushButton" name="liveAvoidObstaclesButton">
           <property name="text">
-           <string>Start scan</string>
+           <string>Live avoid obstacles</string>
           </property>
          </widget>
         </item>
@@ -385,7 +392,7 @@
      <x>0</x>
      <y>0</y>
      <width>940</width>
-     <height>22</height>
+     <height>17</height>
     </rect>
    </property>
   </widget>

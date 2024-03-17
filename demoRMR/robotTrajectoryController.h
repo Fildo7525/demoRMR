@@ -49,6 +49,9 @@ public:
 	void rotateRobotTo(double rotation);
 	void moveForwardBy(double distance);
 	void moveByArcTo(double distance, double rotation);
+    void obstacleAvoidanceTrajectoryInit(double X_target, double Y_target, double actual_X, double actual_Y, double actual_Fi);
+    void obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, double actual_X, double actual_Y, double actual_Fi);
+    bool isInAutoMode();
 
 private:
 	bool isNear(double currentVelocity);
@@ -56,6 +59,8 @@ private:
 	double localDistanceError();
 	double finalRotationError();
 	double localRotationError();
+    double computeDistance(double x1, double y1, double x2, double y2);
+    double computeAngle(double x1, double y1, double x2, double y2, double acutal_Fi);
 
 public slots:
 	void on_stoppingTimerTimeout_stop();
@@ -111,6 +116,12 @@ private:
 
 	int m_fileWriteCounter;
 	bool m_arcExpected;
+
+    bool m_isInAutoMode;
+    double autoModeTarget_X;
+    double autoModeTarget_Y;
+    double autoModeInit_X;
+    double autoModeInit_Y;
 	Map m_map;
 };
 

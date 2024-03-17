@@ -187,6 +187,11 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 	}
 	datacounter++;
 
+    if (m_trajectoryController->isInAutoMode())
+    {
+        m_trajectoryController->obstacleAvoidanceTrajectoryHandle(copyOfLaserData,m_x,m_y,m_fi);
+    }
+
 	return 0;
 }
 
@@ -519,5 +524,16 @@ void MainWindow::onArcSubmitButtonClicked(bool clicked)
 		// TODO: firstly rotat the robot so that the robot is facing the target in range <-PI/4, PI/4>.
 		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
 	}
+}
+
+
+void MainWindow::on_liveAvoidObstaclesButton_clicked()
+{
+    bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
+    bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
+
+    if (ok1 && ok2) {
+        m_trajectoryController->obstacleAvoidanceTrajectoryInit(m_xTarget,m_yTarget,m_x,m_y,m_fi);
+    }
 }
 
