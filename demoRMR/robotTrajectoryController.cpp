@@ -424,14 +424,12 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 
 std::ostream &operator<<(std::ostream &os, const RobotTrajectoryController::Map &map)
 {
-	os << "========================================\n";
 	for (size_t i = 0; i < map.size(); i++) {
 		for (size_t j = 0; j < map[i].size(); j++) {
 			os << (map[i][j] > 5 ? '#' : ' ');
 		}
 		os << std::endl;
 	}
-	os << "========================================\n";
 	return os;
 }
 
