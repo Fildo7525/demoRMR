@@ -11,6 +11,8 @@
 class FloodPlanner
 	: public QObject
 {
+	Q_OBJECT;
+
 	using Map = QVector<QVector<int>>;
 	enum class TrajectoryType {
 		Diagonal,
@@ -22,8 +24,12 @@ class FloodPlanner
 public:
 	explicit FloodPlanner(const QString &filename);
 
-// slots:
+public slots:
 	void on_requestPath_plan(const QPoint &start, const QPoint &end);
+
+public:
+signals:
+	void pathPlanned(QVector<QPointF> path);
 
 private:
 	QPoint toMapCoord(const QPointF &point);
@@ -36,9 +42,12 @@ private:
 	bool isTileValid(const Map &map, QPoint point);
 	void markTiles(Map &map, const QPoint &start, const QPoint &end, TrajectoryType type);
 	QVector<QPointF> planPath(const QPoint &start, const QPoint &end, TrajectoryType type = TrajectoryType::Manhattan);
-	QVector<QPointF> pathFromMap(const Map &map, const QPoint &start, const QPoint &end, TrajectoryType type);
+	QVector<QPoint> pathFromMap(const Map &map, const QPoint &start, const QPoint &end, TrajectoryType type);
+	QVector<QPointF> prunePath(const QVector<QPoint> &path);
 
 	QPair<QVector<int>, QVector<int>> getDirections(TrajectoryType type);
+
+	void printMapWithPath(const QVector<QPoint> &points);
 
 private:
 	std::shared_ptr<Map> m_map;

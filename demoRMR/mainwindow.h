@@ -84,6 +84,7 @@ private slots:
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);
 	void timeout();
+	void handlePath(QVector<QPointF> path);
 
 private:
 signals:

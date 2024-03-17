@@ -71,6 +71,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 	connect(this, &MainWindow::lidarDataReady, m_trajectoryController.get(), &RobotTrajectoryController::on_lidarDataReady_map, Qt::QueuedConnection);
 	connect(this, &MainWindow::requestPath, m_floodPlanner.get(), &FloodPlanner::on_requestPath_plan, Qt::QueuedConnection);
+	connect(m_floodPlanner.get(), &FloodPlanner::pathPlanned, this, &MainWindow::handlePath, Qt::QueuedConnection);
 
 	connect(ui->linSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onLinSubmitButtonClicked, Qt::QueuedConnection);
 	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
@@ -537,5 +538,13 @@ void MainWindow::onArcSubmitButtonClicked(bool clicked)
 		// TODO: firstly rotat the robot so that the robot is facing the target in range <-PI/4, PI/4>.
 		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
 	}
+}
+
+void MainWindow::handlePath(QVector<QPointF> path)
+{
+	path.push_back(QPointF(m_xTarget, m_yTarget));
+	auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
+
+	emit arcResultsReady(distance, angle, path);
 }
 
