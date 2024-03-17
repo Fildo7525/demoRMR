@@ -393,21 +393,6 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 		// Check if within map bounds
 		if (mapX >= 0 && mapX < m_map[0].size() && mapY >= 0 && mapY < m_map.size()) {
 			m_map[mapY][mapX] += 1;
-
-			// auto line = computeLineParameters(QPointF(robotX, robotY), QPointF(x, y));
-			// auto loweringDiff = robotX - x;
-			//
-			// double tmpX, tmpY;
-			// for (double pt = robotX/20.; pt < x; pt+=TILE_SIZE) {
-			// 	tmpX = pt / TILE_SIZE;
-			// 	tmpY = (line.x() * pt + line.y()) / TILE_SIZE;
-			//
-			// 	tmpX += m_map[0].size() / 2.;
-			// 	tmpY += m_map.size() / 2.;
-			//
-			// 	qDebug() << tmpX << " " << tmpY;
-			// 	m_map[tmpY][tmpX] = std::clamp(m_map[tmpY][tmpX], -1000, 1000);
-			// }
 		}
 	}
 
