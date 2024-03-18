@@ -8,6 +8,8 @@
 #include <QString>
 #include <QVector>
 
+// TODO: create link to Cfree space in the map.
+
 class FloodPlanner
 	: public QObject
 {
@@ -38,6 +40,9 @@ private:
 	void loadMap(const QString &filename);
 	void fillMap(const QString &filename);
 	void expandObstacles();
+
+	bool isInCFree(const QPoint &point);
+	QPoint nearestCFreePoint(const QPoint &point, TrajectoryType type);
 
 	bool isTileValid(const Map &map, QPoint point);
 	void markTiles(Map &map, const QPoint &start, const QPoint &end, TrajectoryType type);

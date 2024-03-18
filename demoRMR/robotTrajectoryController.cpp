@@ -7,8 +7,6 @@
 #include <algorithm>
 #include <memory>
 
-#define TILE_SIZE 10
-
 QPointF computeLineParameters(QPointF p1, QPointF p2)
 {
 	QPointF line;
@@ -259,7 +257,12 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 	}
 	else if (m_movementType == MovementType::Arc) {
 		error = localDistanceError();
-		maxCorrection = 0.05;
+		if (finalDistanceError() == localRotationError()) {
+			maxCorrection = 0.05;
+		}
+		else {
+			maxCorrection = 0.1;
+		}
 	}
 
 	if (std::abs(error) < maxCorrection) {
