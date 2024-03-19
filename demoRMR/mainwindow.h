@@ -22,7 +22,7 @@
 #include <sys/types.h>
 #include "lidarMapper.h"
 
-#define TILE_SIZE 13
+#define TILE_SIZE 13.
 
 namespace Ui {
 class MainWindow;

@@ -27,7 +27,7 @@ public:
 	explicit FloodPlanner(const QString &filename);
 
 public slots:
-	void on_requestPath_plan(const QPoint &start, const QPoint &end);
+	void on_requestPath_plan(const QPointF &start, const QPointF &end);
 
 public:
 signals:
