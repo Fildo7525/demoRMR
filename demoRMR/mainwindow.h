@@ -82,8 +82,8 @@ private slots:
 	bool updateTarget(QLineEdit *lineEdit, double &controller);
 	void onLinSubmitButtonClicked(bool clicked);
 	void onArcSubmitButtonClicked(bool clicked);
+    void onLiveAvoidObstaclesButton_clicked(bool clicked);
 
-    void on_liveAvoidObstaclesButton_clicked();
 
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);

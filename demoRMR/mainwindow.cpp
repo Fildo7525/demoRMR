@@ -75,6 +75,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 	connect(ui->linSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onLinSubmitButtonClicked, Qt::QueuedConnection);
 	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
+    connect(ui->liveAvoidObstaclesButton, &QPushButton::clicked, this, &MainWindow::onLiveAvoidObstaclesButton_clicked, Qt::QueuedConnection);
 
 	// Starting threads
 	m_controllerThread->start();
@@ -553,7 +554,7 @@ void MainWindow::handlePath(QVector<QPointF> path)
 	emit arcResultsReady(distance, angle, path);
 }
 
-void MainWindow::on_liveAvoidObstaclesButton_clicked()
+void MainWindow::onLiveAvoidObstaclesButton_clicked(bool clicked)
 {
 	bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
 	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
@@ -562,4 +563,5 @@ void MainWindow::on_liveAvoidObstaclesButton_clicked()
 		m_trajectoryController->obstacleAvoidanceTrajectoryInit(m_xTarget,m_yTarget,m_x,m_y,m_fi);
 	}
 }
+
 

@@ -430,18 +430,36 @@ void RobotTrajectoryController::obstacleAvoidanceTrajectoryInit(double X_target,
 
 void RobotTrajectoryController::obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, double actual_X, double actual_Y, double actual_Fi)
 {
+    static int i = 0;
     double distanceToTarget = computeDistance(actual_X,actual_Y,autoModeTarget_X,autoModeTarget_Y);
     double angleToTarget =  computeAngle(actual_X,actual_Y,autoModeTarget_X,autoModeTarget_Y, actual_Fi);
+    if (doISeeTheTarget(laserData,angleToTarget,distanceToTarget))
+    {
+        if(i == 0){
+            QPointF point1(0.0, 0.0);
+
+            m_points.append({point1});
+
+            emit requestRotation(angleToTarget);
+            i = 1;
+        }
+    }
+
+}
+
+bool RobotTrajectoryController::doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget)
+{
     for(int i = 0; i<laserData.numberOfScans; i++)
     {
         if(laserData.Data[i].scanAngle < angleToTarget+0.1 && laserData.Data[i].scanAngle > angleToTarget-0.1)
         {
             if((laserData.Data[i].scanDistance/1000.0) > distanceToTarget)
             {
-                std::cout << "I see the target at angle" << laserData.Data[i].scanAngle << std::endl;
+                return true;
             }
         }
     }
+    return false;
 }
 
 bool RobotTrajectoryController::isInAutoMode()
