@@ -87,12 +87,14 @@ SOURCES += main.cpp \
         mainwindow.cpp \
         pidcontroller.cpp \
         robotTrajectoryController.cpp \
-        lidarMapper.cpp
+        lidarMapper.cpp \
+        floodPlanner.cpp
 
 HEADERS  += mainwindow.h \
             pidcontroller.h \
             robotTrajectoryController.h \
-            lidarMapper.h
+            lidarMapper.h \
+            floodPlanner.h
 
 FORMS    += mainwindow.ui \
             lidarMapper.ui
