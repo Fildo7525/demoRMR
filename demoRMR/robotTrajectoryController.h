@@ -52,7 +52,7 @@ public:
     void obstacleAvoidanceTrajectoryInit(double X_target, double Y_target, double actual_X, double actual_Y, double actual_Fi);
     void obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, double actual_X, double actual_Y, double actual_Fi);
     bool isInAutoMode();
-
+    bool doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget);
 private:
 	bool isNear(double currentVelocity);
 	double finalDistanceError();
