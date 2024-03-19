@@ -9,6 +9,7 @@
 #include <cmath>
 
 #define TILE_SIZE 14
+#define PI 3.14159
 
 QPointF computeLineParameters(QPointF p1, QPointF p2)
 {
@@ -41,11 +42,11 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	, m_lastArcSpeed(0)
 	, m_fileWriteCounter(0)
 	, m_arcExpected(false)
-    , m_isInAutoMode(false)
-    , autoModeTarget_X(0)
-    , autoModeTarget_Y(0)
-    , autoModeInit_X(0)
-    , autoModeInit_Y(0)
+	, m_isInAutoMode(false)
+	, autoModeTarget_X(0)
+	, autoModeTarget_Y(0)
+	, autoModeInit_X(0)
+	, autoModeInit_Y(0)
 	, m_map(50, std::vector<int>(50, 0))
 {
 	m_accelerationTimer.setInterval(timerInterval);
@@ -271,6 +272,10 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 	if (std::abs(error) < maxCorrection) {
 
 		if (m_movementType == MovementType::Rotation && !m_arcExpected) {
+			if (m_points.empty()) {
+				return;
+			}
+
 			emit requestMovement(localDistanceError());
 		}
 		else if (m_movementType == MovementType::Rotation && m_arcExpected) {
@@ -429,77 +434,75 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 
 void RobotTrajectoryController::obstacleAvoidanceTrajectoryInit(double X_target, double Y_target, double actual_X, double actual_Y, double actual_Fi)
 {
-    autoModeTarget_X = X_target;
-    autoModeTarget_Y = Y_target;
-    m_isInAutoMode = true;
-    autoModeInit_X = actual_X;
-    autoModeInit_Y = actual_Y;
-    std::cout << "To do: " << autoModeTarget_X << " " << autoModeTarget_Y << std::endl;
+	autoModeTarget_X = X_target;
+	autoModeTarget_Y = Y_target;
+	m_isInAutoMode = true;
+	autoModeInit_X = actual_X;
+	autoModeInit_Y = actual_Y;
+	std::cout << "To do: " << autoModeTarget_X << " " << autoModeTarget_Y << std::endl;
 
 }
 
 void RobotTrajectoryController::obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, double actual_X, double actual_Y, double actual_Fi)
 {
-    static int i = 0;
-    double distanceToTarget = computeDistance(actual_X,actual_Y,autoModeTarget_X,autoModeTarget_Y);
-    double angleToTarget =  computeAngle(actual_X,actual_Y,autoModeTarget_X,autoModeTarget_Y, actual_Fi);
-    if (doISeeTheTarget(laserData,angleToTarget,distanceToTarget))
-    {
-        if(i == 0){
-            QPointF point1(0.0, 0.0);
+	static int i = 0;
+	double distanceToTarget = computeDistance(actual_X,actual_Y,autoModeTarget_X,autoModeTarget_Y);
+	double angleToTarget =  computeAngle(actual_X,actual_Y,autoModeTarget_X,autoModeTarget_Y, actual_Fi);
+	if (doISeeTheTarget(laserData,angleToTarget,distanceToTarget))
+	{
+		if(i == 0){
+			QPointF point1(0.0, 0.0);
 
-            m_points.append({point1});
-
-            emit requestRotation(angleToTarget);
-            i = 1;
-        }
-    }
+			emit requestRotation(angleToTarget);
+			i = 1;
+		}
+	}
 
 }
 
 bool RobotTrajectoryController::doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget)
 {
-    for(int i = 0; i<laserData.numberOfScans; i++)
-    {
-        if(laserData.Data[i].scanAngle < angleToTarget+0.1 && laserData.Data[i].scanAngle > angleToTarget-0.1)
-        {
-            if((laserData.Data[i].scanDistance/1000.0) > distanceToTarget)
-            {
-                return true;
-            }
-        }
-    }
-    return false;
+	for(int i = 0; i<laserData.numberOfScans; i++)
+	{
+		if(laserData.Data[i].scanAngle < angleToTarget+0.1 && laserData.Data[i].scanAngle > angleToTarget-0.1)
+		{
+			if((laserData.Data[i].scanDistance/1000.0) > distanceToTarget)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 bool RobotTrajectoryController::isInAutoMode()
 {
-    return m_isInAutoMode;
+	return m_isInAutoMode;
 }
 
 double RobotTrajectoryController::computeDistance(double x1, double y1, double x2, double y2) {
-    double deltaX = x2 - x1;
-    double deltaY = y2 - y1;
-    return sqrt(deltaX * deltaX + deltaY * deltaY);
+	double deltaX = x2 - x1;
+	double deltaY = y2 - y1;
+	return sqrt(deltaX * deltaX + deltaY * deltaY);
 }
 
 double  RobotTrajectoryController::computeAngle(double x1, double y1, double x2, double y2, double actual_Fi) {
-    double deltaY = y2 - y1;
-    double deltaX = x2 - x1;
+	double deltaY = y2 - y1;
+	double deltaX = x2 - x1;
 
-    // Compute the angle in radians using atan2
-    double angle_rad = atan2(deltaY, deltaX);
+	// Compute the angle in radians using atan2
+	double angle_rad = atan2(deltaY, deltaX);
 
-    // Convert radians to degrees
-    double angle_deg = angle_rad * 180.0 / _Pi;
+	// Convert radians to degrees
+	double angle_deg = angle_rad * 180.0 / PI;
 
-    angle_deg = angle_deg + (-1)*(actual_Fi * 180.0 / _Pi);
+	angle_deg = angle_deg + (-1)*(actual_Fi * 180.0 / PI);
 
-    // Ensure angle is in the range [0, 360)
-    if (angle_deg < 0)
-        angle_deg += 360.0;
+	// Ensure angle is in the range [0, 360)
+	if (angle_deg < 0)
+		angle_deg += 360.0;
 
-    return angle_deg;
+	return angle_deg;
 }
 
 std::ostream &operator<<(std::ostream &os, const RobotTrajectoryController::Map &map)
