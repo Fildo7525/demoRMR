@@ -21,6 +21,7 @@ set(HEADERS
 	pidcontroller.h
 	robotTrajectoryController.h
 	lidarMapper.h
+	floodPlanner.h
 )
 
 set(SOURCES
@@ -29,6 +30,7 @@ set(SOURCES
 	pidcontroller.cpp
 	robotTrajectoryController.cpp
 	lidarMapper.cpp
+	floodPlanner.cpp
 )
 
 set(UI

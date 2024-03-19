@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "lidarMapper.h"
-#include "robotTrajectoryController.h"
 #include "ui_mainwindow.h"
+
 #include <QDebug>
 #include <QLineEdit>
 #include <QObject>
@@ -33,10 +33,11 @@ MainWindow::MainWindow(QWidget *parent)
 	, m_y(0)
 	, m_xTarget(0)
 	, m_yTarget(0)
-	, m_trajectoryThread(new QThread(this))
 	, m_controllerThread(new QThread(this))
+	, m_plannerThread(new QThread(this))
 	, m_robotStartupLocation(false)
 {
+	qDebug() << "MainWindow starting";
 	//tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
 	ipaddress = "127.0.0.1"; //192.168.1.12 toto je na niektory realny robot.. na lokal budete davat "127.0.0.1"
 							 //  cap.open("http://192.168.1.11:8000/stream.mjpg");
@@ -57,36 +58,40 @@ MainWindow::MainWindow(QWidget *parent)
 	useCamera1 = false;
 
 	// Object for managing the robot speed interactions.
-	m_trajectoryController = new RobotTrajectoryController(&robot, this);
+	m_trajectoryController = std::make_shared<RobotTrajectoryController>(&robot, this);
+
+	m_floodPlanner = std::make_shared<FloodPlanner>("map.txt");
 
 	// Creating all connections
-	connect(this, &MainWindow::moveForward, m_trajectoryController, &RobotTrajectoryController::onMoveForwardMove, Qt::QueuedConnection);
-	connect(this, &MainWindow::changeRotation, m_trajectoryController, &RobotTrajectoryController::onChangeRotationRotate, Qt::QueuedConnection);
+	connect(this, &MainWindow::moveForward, m_trajectoryController.get(), &RobotTrajectoryController::onMoveForwardMove, Qt::QueuedConnection);
+	connect(this, &MainWindow::changeRotation, m_trajectoryController.get(), &RobotTrajectoryController::onChangeRotationRotate, Qt::QueuedConnection);
 
-	connect(this, &MainWindow::linResultsReady, m_trajectoryController, &RobotTrajectoryController::handleLinResults, Qt::QueuedConnection);
-	connect(this, &MainWindow::arcResultsReady, m_trajectoryController, &RobotTrajectoryController::handleArcResults, Qt::QueuedConnection);
+	connect(this, &MainWindow::linResultsReady, m_trajectoryController.get(), &RobotTrajectoryController::handleLinResults, Qt::QueuedConnection);
+	connect(this, &MainWindow::arcResultsReady, m_trajectoryController.get(), &RobotTrajectoryController::handleArcResults, Qt::QueuedConnection);
 
-	connect(this, &MainWindow::lidarDataReady, m_trajectoryController, &RobotTrajectoryController::on_lidarDataReady_map, Qt::QueuedConnection);
+	connect(this, &MainWindow::lidarDataReady, m_trajectoryController.get(), &RobotTrajectoryController::on_lidarDataReady_map, Qt::QueuedConnection);
+	connect(this, &MainWindow::requestPath, m_floodPlanner.get(), &FloodPlanner::on_requestPath_plan, Qt::QueuedConnection);
+	connect(m_floodPlanner.get(), &FloodPlanner::pathPlanned, this, &MainWindow::handlePath, Qt::QueuedConnection);
 
 	connect(ui->linSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onLinSubmitButtonClicked, Qt::QueuedConnection);
 	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
     connect(ui->liveAvoidObstaclesButton, &QPushButton::clicked, this, &MainWindow::onLiveAvoidObstaclesButton_clicked, Qt::QueuedConnection);
 
 	// Starting threads
-	m_trajectoryThread->start();
 	m_controllerThread->start();
+	m_plannerThread->start();
 
 	// std::cout << __FUNCTION__ << " " << std::this_thread::get_id() << std::endl;
 
 	m_trajectoryController->moveToThread(m_controllerThread);
+	m_floodPlanner->moveToThread(m_plannerThread);
 }
 
 MainWindow::~MainWindow()
 {
 	m_controllerThread->exit(0);
-	m_trajectoryThread->exit(0);
+	m_plannerThread->exit(0);
 	delete ui;
-	delete m_trajectoryController;
 }
 
 void MainWindow::paintEvent(QPaintEvent *event)
@@ -188,10 +193,10 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 	}
 	datacounter++;
 
-    if (m_trajectoryController->isInAutoMode())
-    {
-        m_trajectoryController->obstacleAvoidanceTrajectoryHandle(copyOfLaserData,m_x,m_y,m_fi);
-    }
+	if (m_trajectoryController->isInAutoMode())
+	{
+		m_trajectoryController->obstacleAvoidanceTrajectoryHandle(copyOfLaserData,m_x,m_y,m_fi);
+	}
 
 	return 0;
 }
@@ -376,7 +381,7 @@ void MainWindow::on_pushButton_9_clicked() //start button
 {
 	ipaddress = ui->comboBox->currentText().toStdString();
 
-    //ziskanie joystickov
+	//ziskanie joystickov
 	forwardspeed = 0;
 	rotationspeed = 0;
 	//tu sa nastartuju vlakna ktore citaju data z lidaru a robota
@@ -450,7 +455,7 @@ void MainWindow::on_showMapButton_clicked()
 	m_lidarMapper->show();
 
 
-	m_connection = connect(m_trajectoryController, &RobotTrajectoryController::pointCloudCaluculated,
+	m_connection = connect(m_trajectoryController.get(), &RobotTrajectoryController::pointCloudCaluculated,
 			m_lidarMapper, &LidarMapper::on_pointCloudCalculatedShow, Qt::QueuedConnection);
 
 }
@@ -486,6 +491,20 @@ void MainWindow::on_startScanButton_clicked()
 	};
 	auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
 	emit arcResultsReady(distance, angle, points);
+}
+
+void MainWindow::on_pathPlannerButton_clicked()
+{
+	bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
+	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
+	if (!ok1 || !ok2) {
+		return;
+	}
+
+	QPoint start(m_x, m_y);
+	QPoint end(m_xTarget, m_yTarget);
+
+	emit requestPath(start, end);
 }
 
 void MainWindow::timeout()
@@ -527,14 +546,22 @@ void MainWindow::onArcSubmitButtonClicked(bool clicked)
 	}
 }
 
+void MainWindow::handlePath(QVector<QPointF> path)
+{
+	path.push_back(QPointF(m_xTarget, m_yTarget));
+	auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
+
+	emit arcResultsReady(distance, angle, path);
+}
+
 void MainWindow::onLiveAvoidObstaclesButton_clicked(bool clicked)
 {
-    bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
-    bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
+	bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
+	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
 
-    if (ok1 && ok2) {
-        m_trajectoryController->obstacleAvoidanceTrajectoryInit(m_xTarget,m_yTarget,m_x,m_y,m_fi);
-    }
+	if (ok1 && ok2) {
+		m_trajectoryController->obstacleAvoidanceTrajectoryInit(m_xTarget,m_yTarget,m_x,m_y,m_fi);
+	}
 }
 
 

@@ -8,7 +8,6 @@
 #include <memory>
 #include <cmath>
 
-#define TILE_SIZE 14
 #define PI 3.14159
 
 QPointF computeLineParameters(QPointF p1, QPointF p2)
@@ -266,7 +265,12 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 	}
 	else if (m_movementType == MovementType::Arc) {
 		error = localDistanceError();
-		maxCorrection = 0.05;
+		if (finalDistanceError() == localRotationError()) {
+			maxCorrection = 0.05;
+		}
+		else {
+			maxCorrection = 0.1;
+		}
 	}
 
 	if (std::abs(error) < maxCorrection) {
@@ -398,27 +402,12 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 		x /= TILE_SIZE;
 		y /= TILE_SIZE;
 
-		int mapX = x + m_map[0].size() / 2.;
+		int mapX = x + m_map[0].size() / 4.;
 		int mapY = y + m_map.size() / 2.;
 
 		// Check if within map bounds
 		if (mapX >= 0 && mapX < m_map[0].size() && mapY >= 0 && mapY < m_map.size()) {
 			m_map[mapY][mapX] += 1;
-
-			// auto line = computeLineParameters(QPointF(robotX, robotY), QPointF(x, y));
-			// auto loweringDiff = robotX - x;
-			//
-			// double tmpX, tmpY;
-			// for (double pt = robotX/20.; pt < x; pt+=TILE_SIZE) {
-			// 	tmpX = pt / TILE_SIZE;
-			// 	tmpY = (line.x() * pt + line.y()) / TILE_SIZE;
-			//
-			// 	tmpX += m_map[0].size() / 2.;
-			// 	tmpY += m_map.size() / 2.;
-			//
-			// 	qDebug() << tmpX << " " << tmpY;
-			// 	m_map[tmpY][tmpX] = std::clamp(m_map[tmpY][tmpX], -1000, 1000);
-			// }
 		}
 	}
 
@@ -426,7 +415,9 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 		emit pointCloudCaluculated(points);
 	}
 	if (m_fileWriteCounter % 20 == 0) {
-		std::cout << m_map;
+		std::fstream file("map.txt", std::ios::out);
+		file << m_map;
+		file.close();
 	}
 	m_fileWriteCounter++;
 }
@@ -507,14 +498,12 @@ double  RobotTrajectoryController::computeAngle(double x1, double y1, double x2,
 
 std::ostream &operator<<(std::ostream &os, const RobotTrajectoryController::Map &map)
 {
-	os << "========================================\n";
 	for (size_t i = 0; i < map.size(); i++) {
 		for (size_t j = 0; j < map[i].size(); j++) {
 			os << (map[i][j] > 5 ? '#' : ' ');
 		}
 		os << std::endl;
 	}
-	os << "========================================\n";
 	return os;
 }
 

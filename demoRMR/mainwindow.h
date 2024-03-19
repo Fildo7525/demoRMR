@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "floodPlanner.h"
 #include <QMainWindow>
 #include <QTimer>
 #ifdef _WIN32
@@ -10,6 +11,7 @@
 #include "qthread.h"
 #include "robot.h"
 #include "robotTrajectoryController.h"
+#include "floodPlanner.h"
 #include <QMutex>
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/utility.hpp>
@@ -19,6 +21,8 @@
 #include <opencv2/videoio.hpp>
 #include <sys/types.h>
 #include "lidarMapper.h"
+
+#define TILE_SIZE 13.
 
 namespace Ui {
 class MainWindow;
@@ -73,6 +77,8 @@ private slots:
 
 	void on_startScanButton_clicked();
 
+	void on_pathPlannerButton_clicked();
+
 	bool updateTarget(QLineEdit *lineEdit, double &controller);
 	void onLinSubmitButtonClicked(bool clicked);
 	void onArcSubmitButtonClicked(bool clicked);
@@ -82,6 +88,7 @@ private slots:
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);
 	void timeout();
+	void handlePath(QVector<QPointF> path);
 
 private:
 signals:
@@ -90,6 +97,8 @@ signals:
 
 	void moveForward(double speed);
 	void changeRotation(double rotation);
+
+	void requestPath(const QPoint &start, const QPoint &end);
 
 public:
 signals:
@@ -114,7 +123,8 @@ private:
 	std::string ipaddress;
 	Robot robot;
 
-	RobotTrajectoryController *m_trajectoryController;
+	std::shared_ptr<RobotTrajectoryController> m_trajectoryController;
+	std::shared_ptr<FloodPlanner> m_floodPlanner;
 
 	TKobukiData robotdata;
 	int datacounter;
@@ -130,8 +140,8 @@ private:
 	double m_xTarget;
 	double m_yTarget;
 
-	QThread *m_trajectoryThread;
 	QThread *m_controllerThread;
+	QThread *m_plannerThread;
 	QMutex m_mutex;
 
 	double forwardspeed;  // mm/s
