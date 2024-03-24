@@ -82,6 +82,7 @@ private slots:
 	void obstacleAvoidanceTrajectoryInit(double X_target, double Y_target, double actual_X, double actual_Y, double actual_Fi);
 	void obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, double actual_X, double actual_Y, double actual_Fi);
 	bool doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget);
+	void doFinalTransport();
 
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);

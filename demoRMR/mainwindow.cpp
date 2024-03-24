@@ -560,12 +560,27 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, d
 	double angleToTarget =  computeAngle(actual_X,actual_Y,autoModeTarget_X,autoModeTarget_Y, actual_Fi);
 	if (doISeeTheTarget(laserData,angleToTarget,distanceToTarget))
 	{
-		if(i == 0){
-			std::cout << "target visible at: " << angleToTarget << std::endl;
+		std::cout << "target visible at: " << angleToTarget << std::endl;
+		doFinalTransport();
 
-		}
 	}
 
+}
+
+void MainWindow::doFinalTransport()
+{
+	static bool performed = false;
+
+	if(!performed){
+		std::cout << "Final transport started" << std::endl;
+		bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
+		bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
+
+		if (ok1 && ok2) {
+			_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
+		}
+		performed = true;
+	}
 }
 
 bool MainWindow::doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget)
