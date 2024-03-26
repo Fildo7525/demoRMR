@@ -75,6 +75,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 	connect(ui->linSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onLinSubmitButtonClicked, Qt::QueuedConnection);
 	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
+	connect(ui->avoidingArcButton, &QPushButton::clicked, this &MainWindow::onAvoidingArcButtonClicked, Qt::QueuedConnection);
 
 	// Starting threads
 	m_controllerThread->start();
@@ -546,6 +547,17 @@ void MainWindow::onArcSubmitButtonClicked(bool clicked)
 		// TODO: firstly rotat the robot so that the robot is facing the target in range <-PI/4, PI/4>.
 		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
 	}
+}
+
+void MainWindow::onAvoidingArcButtonClicked(bool clicked)
+{
+	bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
+	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
+
+	if (ok1 && ok2) {
+		
+	}
+
 }
 
 void MainWindow::handlePath(QVector<QPointF> path)
