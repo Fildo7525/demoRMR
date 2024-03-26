@@ -35,7 +35,12 @@ MainWindow::MainWindow(QWidget *parent)
 	, m_yTarget(0)
 	, m_controllerThread(new QThread(this))
 	, m_plannerThread(new QThread(this))
-	, m_robotStartupLocation(false)
+    , m_isInAutoMode(false)
+    , autoModeTarget_X(0)
+    , autoModeTarget_Y(0)
+    , autoModeInit_X(0)
+    , autoModeInit_Y(0)
+    , m_robotStartupLocation(false)
 {
 	qDebug() << "MainWindow starting";
 	//tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
@@ -75,6 +80,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 	connect(ui->linSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onLinSubmitButtonClicked, Qt::QueuedConnection);
 	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
+    connect(ui->liveAvoidObstaclesButton, &QPushButton::clicked, this, &MainWindow::onLiveAvoidObstaclesButton_clicked, Qt::QueuedConnection);
 
 	// Starting threads
 	m_controllerThread->start();
@@ -191,6 +197,11 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 		/// vtedy ale odporucam pouzit mutex, aby sa vam nestalo ze budete pocas vypisovania prepisovat niekde inde
 	}
 	datacounter++;
+
+    if (m_isInAutoMode)
+    {
+        obstacleAvoidanceTrajectoryHandle(copyOfLaserData,m_x,m_y,m_fi);
+    }
 
 	return 0;
 }
@@ -548,3 +559,92 @@ void MainWindow::handlePath(QVector<QPointF> path)
 	emit arcResultsReady(distance, angle, path);
 }
 
+
+void MainWindow::onLiveAvoidObstaclesButton_clicked(bool clicked)
+{
+    bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
+    bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
+
+    if (ok1 && ok2) {
+        obstacleAvoidanceTrajectoryInit(m_xTarget,m_yTarget,m_x,m_y,m_fi);
+    }
+}
+
+void MainWindow::obstacleAvoidanceTrajectoryInit(double X_target, double Y_target, double actual_X, double actual_Y, double actual_Fi)
+{
+    autoModeTarget_X = X_target;
+    autoModeTarget_Y = Y_target;
+    m_isInAutoMode = true;
+    autoModeInit_X = actual_X;
+    autoModeInit_Y = actual_Y;
+    std::cout << "To do: " << autoModeTarget_X << " " << autoModeTarget_Y << std::endl;
+
+}
+
+void MainWindow::obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, double actual_X, double actual_Y, double actual_Fi)
+{
+    static int i = 0;
+    double distanceToTarget = computeDistance(actual_X,actual_Y,autoModeTarget_X,autoModeTarget_Y);
+    double angleToTarget =  computeAngle(actual_X,actual_Y,autoModeTarget_X,autoModeTarget_Y, actual_Fi);
+    if (doISeeTheTarget(laserData,angleToTarget,distanceToTarget))
+    {
+        std::cout << "target visible at: " << angleToTarget << std::endl;
+        doFinalTransport();
+
+    }
+
+}
+
+void MainWindow::doFinalTransport()
+{
+
+        std::cout << "Final transport started" << std::endl;
+        bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
+        bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
+
+        if (ok1 && ok2) {
+            _calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
+        }
+        m_isInAutoMode = false;
+
+}
+
+bool MainWindow::doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget)
+{
+    for(int i = 0; i<laserData.numberOfScans; i++)
+    {
+        if(laserData.Data[i].scanAngle < angleToTarget+0.1 && laserData.Data[i].scanAngle > angleToTarget-0.1)
+        {
+            if((laserData.Data[i].scanDistance/1000.0) > distanceToTarget)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+double MainWindow::computeDistance(double x1, double y1, double x2, double y2) {
+    double deltaX = x2 - x1;
+    double deltaY = y2 - y1;
+    return sqrt(deltaX * deltaX + deltaY * deltaY);
+}
+
+double  MainWindow::computeAngle(double x1, double y1, double x2, double y2, double actual_Fi) {
+    double deltaY = y2 - y1;
+    double deltaX = x2 - x1;
+
+    // Compute the angle in radians using atan2
+    double angle_rad = atan2(deltaY, deltaX);
+
+    // Convert radians to degrees
+    double angle_deg = angle_rad * 180.0 / PI;
+
+    angle_deg = angle_deg + (-1)*(actual_Fi * 180.0 / PI);
+
+    // Ensure angle is in the range [0, 360)
+    if (angle_deg < 0)
+        angle_deg += 360.0;
+
+    return angle_deg;
+}

@@ -55,6 +55,8 @@ private:
 	void paintEvent(QPaintEvent *event); // Q_DECL_OVERRIDE;
 	void calculateOdometry(const TKobukiData &robotdata);
 	void _calculateTrajectory(RobotTrajectoryController::MovementType type);
+    double computeDistance(double x1, double y1, double x2, double y2);
+    double computeAngle(double x1, double y1, double x2, double y2, double acutal_Fi);
 
 private slots:
 	void on_pushButton_8_clicked();
@@ -82,6 +84,11 @@ private slots:
 	bool updateTarget(QLineEdit *lineEdit, double &controller);
 	void onLinSubmitButtonClicked(bool clicked);
 	void onArcSubmitButtonClicked(bool clicked);
+    void onLiveAvoidObstaclesButton_clicked(bool clicked);
+    void obstacleAvoidanceTrajectoryInit(double X_target, double Y_target, double actual_X, double actual_Y, double actual_Fi);
+    void obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, double actual_X, double actual_Y, double actual_Fi);
+    bool doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget);
+    void doFinalTransport();
 
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);
@@ -147,6 +154,12 @@ private:
 
 	bool m_robotStartupLocation;
 	double m_fiCorrection;
+
+    bool m_isInAutoMode;
+    double autoModeTarget_X;
+    double autoModeTarget_Y;
+    double autoModeInit_X;
+    double autoModeInit_Y;
 };
 
 #endif // MAINWINDOW_H
