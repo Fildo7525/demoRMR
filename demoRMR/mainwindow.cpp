@@ -12,6 +12,8 @@
 #include <cmath>
 
 static const QString IP_ADDRESSES[2] {"127.0.0.1", "192.168.1."};
+#define PI 3.14159
+
 ///TOTO JE DEMO PROGRAM...AK SI HO NASIEL NA PC V LABAKU NEPREPISUJ NIC,ALE SKOPIRUJ SI MA NIEKAM DO INEHO FOLDERA
 /// AK HO MAS Z GITU A ROBIS NA LABAKOVOM PC, TAK SI HO VLOZ DO FOLDERA KTORY JE JASNE ODLISITELNY OD TVOJICH KOLEGOV
 /// NASLEDNE V POLOZKE Projects SKONTROLUJ CI JE VYPNUTY shadow build...
@@ -612,9 +614,9 @@ double  MainWindow::computeAngle(double x1, double y1, double x2, double y2, dou
 	double angle_rad = atan2(deltaY, deltaX);
 
 	// Convert radians to degrees
-	double angle_deg = angle_rad * 180.0 / _Pi;
+	double angle_deg = angle_rad * 180.0 / PI;
 
-	angle_deg = angle_deg + (-1)*(actual_Fi * 180.0 / _Pi);
+	angle_deg = angle_deg + (-1)*(actual_Fi * 180.0 / PI);
 
 	// Ensure angle is in the range [0, 360)
 	if (angle_deg < 0)
