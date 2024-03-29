@@ -24,13 +24,14 @@ FloodPlanner::FloodPlanner(const QString &filename)
 
 QPoint FloodPlanner::toMapCoord(const QPointF &point)
 {
-	return QPoint(point.x(), -point.y()) * 1000. / 20. / TILE_SIZE + QPoint(m_map->at(0).size() / 4., m_map->size() / 2.);
+	auto tmp =  QPointF(point.x(), -point.y()) * 1000. / 20. / TILE_SIZE + QPoint(m_map->at(0).size() / 4., m_map->size() / 2.);
+	return tmp.toPoint();
 }
 
 QPointF FloodPlanner::toWorlCoord(const QPoint &point)
 {
-	return QPointF( ((point.x() - m_map->at(0).size() / 4.) * TILE_SIZE + TILE_SIZE/2.) * 20. / 1000.,
-				   (-(point.y() - m_map->size() / 2.) * TILE_SIZE - TILE_SIZE/2.) * 20. / 1000.);
+	return QPointF(((point.x() - m_map->at(0).size() / 4.) * TILE_SIZE + TILE_SIZE / 2.) * 20. / 1000.,
+				   (-(point.y() - m_map->size() / 2.) * TILE_SIZE - TILE_SIZE / 2.) * 20. / 1000.);
 }
 
 void FloodPlanner::loadMap(const QString &filename)
@@ -45,12 +46,14 @@ void FloodPlanner::loadMap(const QString &filename)
 
 void FloodPlanner::on_requestPath_plan(const QPointF &start, const QPointF &end)
 {
-	if (!isTileValid(*m_map, start.toPoint()) || !isTileValid(*m_map, end.toPoint())) {
-		return;
-	}
-
 	QPoint s = toMapCoord(start);
 	QPoint e = toMapCoord(end);
+
+	if (!isTileValid(*m_map, e)) {
+		qDebug() << "Invalid start or end point";
+		printMapWithPath ({s, e});
+		return;
+	}
 
 	qDebug() << "Start: " << s << " End: " << e;
 
@@ -83,20 +86,15 @@ void FloodPlanner::fillMap(const QString &filename)
 
 void FloodPlanner::expandObstacles()
 {
+	auto directions = getDirections(TrajectoryType::Diagonal);
 	for (int y = 0; y < m_map->size(); ++y) {
 		for (int x = 0; x < m_map->at(y).size(); ++x) {
 			if (m_map->at(y).at(x) == -1) {
-				if (y > 0 && m_map->at(y - 1).at(x) == 0) {
-					(*m_map)[y - 1][x] = -2;
-				}
-				if (y < m_map->size() - 1 && m_map->at(y + 1).at(x) == 0) {
-					(*m_map)[y + 1][x] = -2;
-				}
-				if (x > 0 && m_map->at(y).at(x - 1) == 0) {
-					(*m_map)[y][x - 1] = -2;
-				}
-				if (x < m_map->at(y).size() - 1 && m_map->at(y).at(x + 1) == 0) {
-					(*m_map)[y][x + 1] = -2;
+				for (size_t i = 0; i < directions.first.size(); i++) {
+					QPoint next = QPoint(x, y) + QPoint(directions.first[i], directions.second[i]);
+					if (isTileValid(*m_map, next) && m_map->at(next.y()).at(next.x()) == 0) {
+						(*m_map)[next.y()][next.x()] = -2;
+					}
 				}
 			}
 		}
@@ -116,7 +114,6 @@ QPoint FloodPlanner::nearestCFreePoint(const QPoint &point, TrajectoryType type)
 
 	Map map = *m_map;
 
-
 	auto [dx, dy] = getDirections(type);
 
 	QVector<QPoint> toVisit{point};
@@ -132,7 +129,7 @@ QPoint FloodPlanner::nearestCFreePoint(const QPoint &point, TrajectoryType type)
 
 		for (int i = 0; i < dx.size(); ++i) {
 			QPoint next = curr + QPoint(dx[i], dy[i]);
-			if (isTileValid(map, next) && !visited.contains(next)) {
+			if (isTileValid(map, next) && !isTileObstacle(map, next) && !visited.contains(next)) {
 				toVisit.push_back(next);
 				visited.insert(next);
 			}
@@ -140,18 +137,33 @@ QPoint FloodPlanner::nearestCFreePoint(const QPoint &point, TrajectoryType type)
 	}
 }
 
-bool FloodPlanner::isTileValid(const Map &map, QPoint point)
+int FloodPlanner::maxFromNeighbours(const Map &map, const QPoint &point)
+{
+	auto directions = getDirections(TrajectoryType::Diagonal);
+
+	int max = 0;
+	for (size_t i = 0; i < directions.first.size(); i++) {
+		QPoint next = point + QPoint(directions.first[i], directions.second[i]);
+		if (isTileValid(map, next) && map[next.y()][next.x()] > max) {
+			max = map[next.y()][next.x()];
+		}
+	}
+
+	return max;
+}
+
+bool FloodPlanner::isTileObstacle(const Map &map, const QPoint &point)
+{
+	return m_map->at(point.y()).at(point.x()) < 0;
+}
+
+bool FloodPlanner::isTileValid(const Map &map, const QPoint &point)
 {
 	// Check for out of bounds.
 	if (point.x() < 0 || point.x() >= map[0].size()) {
 		return false;
 	}
 	if (point.y() < 0 || point.y() >= map.size()) {
-		return false;
-	}
-
-	// Check for obstacles.
-	if (map[point.y()][point.x()] < 0) {
 		return false;
 	}
 
@@ -175,7 +187,7 @@ void FloodPlanner::markTiles(Map &map, const QPoint &start, const QPoint &end, T
 
 		for (int i = 0; i < dx.size(); ++i) {
 			QPoint next = curr + QPoint(dx[i], dy[i]);
-			if (isTileValid(map, next) && !visited.contains(next)) {
+			if (isTileValid(map, next) && !isTileObstacle(map, next) && !visited.contains(next)) {
 				map[next.y()][next.x()] = map[curr.y()][curr.x()] + 1;
 				toVisit.push_back(next);
 				visited.insert(next);
@@ -199,10 +211,11 @@ QVector<QPointF> FloodPlanner::planPath(const QPoint &start, const QPoint &end, 
 	std::cout << "Flooded:\n";
 	std::cout << map << std::endl;
 
+	qDebug() << "Creating path from start to end from the flooded data.";
 	auto path = pathFromMap(map, s, e, TrajectoryType::Diagonal);
 
-	path.pop_back();
-	path.push_back(end);
+	// path.pop_back();
+	// path.push_back(end);
 
 	std::cout << "Unpruned:\n";
 	printMapWithPath(path);
@@ -215,11 +228,16 @@ QVector<QPointF> FloodPlanner::planPath(const QPoint &start, const QPoint &end, 
 	return pathF;
 }
 
-QVector<QPoint> FloodPlanner::pathFromMap(const Map &map, const QPoint &start, const QPoint &end, TrajectoryType type)
+QVector<QPoint> FloodPlanner::pathFromMap(Map &map, const QPoint &start, const QPoint &end, TrajectoryType type)
 {
 	QVector<QPoint> path;
 	QPoint curr = start;
 	auto [dx, dy] = getDirections(type);
+
+	// We do this to ensure that the start point is marked correctly even if we want to go the the beginning of the path.
+	if (map[start.y()][start.x()] == 0) {
+		map[start.y()][start.x()] = maxFromNeighbours(map, start);
+	}
 
 	while (curr != end)
 	{
@@ -227,11 +245,16 @@ QVector<QPoint> FloodPlanner::pathFromMap(const Map &map, const QPoint &start, c
 		for (size_t i = 0; i < dx.size(); i++)
 		{
 			QPoint next = curr + QPoint(dx[i], dy[i]);
-			if (isTileValid(map, next) && lowest.second > map[next.y()][next.x()]) {
+			if (isTileValid(map, next)
+				&& !isTileObstacle(map, next)
+				&& lowest.second > map[next.y()][next.x()]
+				&& lowest.second - map[next.y()][next.x()] < 3)
+			{
 				lowest = {next, map[next.y()][next.x()]};
 			}
 		}
 
+		qDebug() << "Lowest: " << lowest.first << " " << lowest.second;
 		path.push_back(lowest.first);
 		curr = lowest.first;
 	}
@@ -350,5 +373,4 @@ std::ostream &operator<<(std::ostream &os, const FloodPlanner::Map &map)
 	}
 	return os;
 }
-
 

@@ -44,10 +44,12 @@ private:
 	bool isInCFree(const QPoint &point);
 	QPoint nearestCFreePoint(const QPoint &point, TrajectoryType type);
 
-	bool isTileValid(const Map &map, QPoint point);
+	int maxFromNeighbours(const Map &map, const QPoint &point);
+	bool isTileObstacle(const Map &map, const QPoint &point);
+	bool isTileValid(const Map &map, const QPoint &point);
 	void markTiles(Map &map, const QPoint &start, const QPoint &end, TrajectoryType type);
 	QVector<QPointF> planPath(const QPoint &start, const QPoint &end, TrajectoryType type = TrajectoryType::Manhattan);
-	QVector<QPoint> pathFromMap(const Map &map, const QPoint &start, const QPoint &end, TrajectoryType type);
+	QVector<QPoint> pathFromMap(Map &map, const QPoint &start, const QPoint &end, TrajectoryType type);
 	QVector<QPointF> prunePath(const QVector<QPoint> &path);
 
 	QPair<QVector<int>, QVector<int>> getDirections(TrajectoryType type);

@@ -96,7 +96,7 @@ signals:
 	void moveForward(double speed);
 	void changeRotation(double rotation);
 
-	void requestPath(const QPoint &start, const QPoint &end);
+	void requestPath(const QPointF &start, const QPointF &end);
 
 public:
 signals:

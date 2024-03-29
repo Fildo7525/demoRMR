@@ -489,14 +489,22 @@ void MainWindow::on_startScanButton_clicked()
 
 void MainWindow::on_pathPlannerButton_clicked()
 {
+	// Start - [0.50 0.50]
+	// Top right - [5.02, 4.21] => [4.52, 3.71]
+	// Mid right - [5.22, 2.65] => [4.72, 2.15]
+	// Botton right - [5.12, -0.35] => [4.62, -0.85]
+	// Bottom left - [1.7, -0.9] => [1.2, -1.4]
+
 	bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
 	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
 	if (!ok1 || !ok2) {
 		return;
 	}
 
-	QPoint start(m_x, m_y);
-	QPoint end(m_xTarget, m_yTarget);
+	QPointF start(m_x, m_y);
+	QPointF end(m_xTarget, m_yTarget);
+
+	qDebug() << "Current position: " << start << " Requested end: " << end;
 
 	emit requestPath(start, end);
 }
