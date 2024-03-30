@@ -9,7 +9,9 @@
 #include <QPoint>
 #include <QPushButton>
 #include <QThread>
+#include <algorithm>
 #include <cmath>
+#include <qnamespace.h>
 
 static const QString IP_ADDRESSES[2] {"127.0.0.1", "192.168.1."};
 ///TOTO JE DEMO PROGRAM...AK SI HO NASIEL NA PC V LABAKU NEPREPISUJ NIC,ALE SKOPIRUJ SI MA NIEKAM DO INEHO FOLDERA
@@ -75,7 +77,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 	connect(ui->linSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onLinSubmitButtonClicked, Qt::QueuedConnection);
 	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
-	connect(ui->avoidingArcButton, &QPushButton::clicked, this &MainWindow::onAvoidingArcButtonClicked, Qt::QueuedConnection);
+	connect(ui->avoidingArcButton, &QPushButton::clicked, this, &MainWindow::onAvoidingArcButtonClicked, Qt::QueuedConnection);
 
 	// Starting threads
 	m_controllerThread->start();
@@ -135,6 +137,10 @@ void MainWindow::paintEvent(QPaintEvent *event)
 			}
 		}
 	}
+	pero.setColor(Qt::red);
+	pero.setWidth(4);
+	painter.setPen(pero);
+	painter.drawEllipse(QPointF(rect.width(), rect.height()) - m_collision/1000./20. + QPointF{rect.width()/2., rect.height()/2.}, 2, 2);
 }
 
 ///toto je calback na data z lidaru, ktory ste podhodili robotu vo funkcii on_pushButton_9_clicked
@@ -148,7 +154,7 @@ int MainWindow::processThisLidar(LaserMeasurement laserData)
 	update(); //tento prikaz prinuti prekreslit obrazovku.. zavola sa paintEvent funkcia
 
 	// qDebug() << "m_x: " << m_x << " m_y: " << m_y << " m_fi: " << m_fi;
-	emit lidarDataReady(std::move(copyOfLaserData));
+	emit lidarDataReady(copyOfLaserData);
 
 	return 0;
 }
@@ -286,6 +292,59 @@ void MainWindow::_calculateTrajectory(RobotTrajectoryController::MovementType ty
 	else if (type == RobotTrajectoryController::MovementType::Arc) {
 		emit arcResultsReady(distance, angle, points);
 	}
+}
+
+void MainWindow::calculateTrajectoryWithObstacle()
+{
+	auto [distance, angle] = calculateTrajectory();
+
+	QPointF min(m_x, m_y);
+	QPointF max(m_xTarget, m_yTarget);
+	QPointF line = computeLineParameters(min, max);
+	LaserMeasurement lidarMeasurement = copyOfLaserData;
+	QPointF collisionPoint(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+
+	bool inColision = std::any_of(
+		std::begin(lidarMeasurement.Data),
+		std::begin(lidarMeasurement.Data)+lidarMeasurement.numberOfScans,
+		[this, &collisionPoint] (const LaserData &point) mutable {
+			if (point.scanDistance == 0) {
+				return false;
+			}
+
+			auto dist = std::sin(point.scanAngle) * point.scanDistance;
+			qDebug() << "Dist: " << dist << " robot: " << float(robot.b*1000);
+			bool d = std::abs(dist) < robot.b * 1000;
+			if (d) {
+				double x = point.scanDistance * 2 * std::cos(360. - point.scanAngle * TO_RADIANS);
+				double y = point.scanDistance * 2 * std::sin(360. - point.scanAngle * TO_RADIANS);
+				qDebug() << "Distance: " << point.scanDistance << " angle: " << point.scanAngle;
+				qDebug() << "Collision point: " << QPointF(x, y);
+				collisionPoint = {x, y};
+			}
+
+			return d;
+	});
+
+	if (!inColision) {
+		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
+		return;
+	}
+
+	qDebug() << "Collision point detected: " << collisionPoint;
+	m_collision = collisionPoint;
+
+	// TODO: BFS to parse lidar data. We start at the colision point and move to all the points that are closer than cca 60cm.
+	// This will ensure that the ends are found. The ends are the points that have the least points in their surroundings.
+	auto [left, right] = findObjectEndPoints(lidarMeasurement, collisionPoint);
+
+
+
+}
+
+QPair<QPointF,QPointF> MainWindow::findObjectEndPoints(const LaserMeasurement &lidarData, const QPointF &collisionPoint)
+{
+	
 }
 
 QPair<double, double> MainWindow::calculateTrajectory()
@@ -555,9 +614,9 @@ void MainWindow::onAvoidingArcButtonClicked(bool clicked)
 	bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
 
 	if (ok1 && ok2) {
-		
+		qDebug() << "Avoiding arc";
+		calculateTrajectoryWithObstacle();
 	}
-
 }
 
 void MainWindow::handlePath(QVector<QPointF> path)

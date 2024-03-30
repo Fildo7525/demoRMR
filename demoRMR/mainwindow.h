@@ -55,6 +55,8 @@ private:
 	void paintEvent(QPaintEvent *event); // Q_DECL_OVERRIDE;
 	void calculateOdometry(const TKobukiData &robotdata);
 	void _calculateTrajectory(RobotTrajectoryController::MovementType type);
+	void calculateTrajectoryWithObstacle();
+	QPair<QPointF,QPointF> findObjectEndPoints(const LaserMeasurement &lidarData, const QPointF &collisionPoint);
 
 private slots:
 	void on_pushButton_8_clicked();
@@ -148,6 +150,8 @@ private:
 
 	bool m_robotStartupLocation;
 	double m_fiCorrection;
+
+	QPointF m_collision;
 };
 
 #endif // MAINWINDOW_H
