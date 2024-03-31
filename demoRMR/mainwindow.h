@@ -35,6 +35,14 @@ class MainWindow : public QMainWindow
 
 	friend class RobotTrajectoryController;
 	friend class LidarMapper;
+	struct EndPoint
+	{
+		int index;
+		LaserData laserData;
+		QPointF point;
+	};
+
+	using EndPointVector = QVector<EndPoint>;
 
 public:
 	explicit MainWindow(QWidget *parent = 0);
@@ -56,8 +64,8 @@ private:
 	void calculateOdometry(const TKobukiData &robotdata);
 	void _calculateTrajectory(RobotTrajectoryController::MovementType type);
 	void calculateTrajectoryWithObstacle();
-	QPair<QPointF,QPointF> findObjectEndPoints(const LaserMeasurement &lidarData, int inCollision, const QPointF &collisionPoint);
-	QPair<int, QPointF> detectCollision(const LaserMeasurement &lidarMeasurement, double angle);
+	QPair<QPointF,QPointF> findObjectEndPoints(const EndPointVector &endPointVector, const EndPoint &endPoint);
+	EndPoint detectCollision(const EndPointVector &endPoints, double angle);
 
 private slots:
 	void on_pushButton_8_clicked();

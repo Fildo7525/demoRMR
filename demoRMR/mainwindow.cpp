@@ -141,7 +141,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
 	pero.setWidth(4);
 	painter.setPen(pero);
 	for(const auto &point : m_collisionCircle) {
-		painter.drawEllipse(QPointF(rect.width(), rect.height()) - (point / 10. + QPointF{rect.width()/2., rect.height()/2.}) + QPointF(rect.topLeft()), 2, 2);
+		painter.drawEllipse(QPointF(rect.width(), rect.height()) - (point * 1000 / 10. + QPointF{rect.width()/2., rect.height()/2.}) + QPointF(rect.topLeft()), 2, 2);
 	}
 
 	pero.setColor(Qt::red);
@@ -310,60 +310,75 @@ void MainWindow::calculateTrajectoryWithObstacle()
 	QPointF line = computeLineParameters(min, max);
 	LaserMeasurement lidarMeasurement = copyOfLaserData;
 
-	auto [inColision, collisionPoint] = detectCollision(lidarMeasurement, angle);
+	int idx = 0;
+	EndPointVector endPoints;
+	std::transform(
+		std::begin(lidarMeasurement.Data),
+		std::begin(lidarMeasurement.Data) + lidarMeasurement.numberOfScans,
+		std::back_inserter(endPoints),
+		[&](const LaserData &data) {
+			return EndPoint{
+				idx++,
+				data,
+				QPointF((data.scanDistance / 1000.) * std::sin((360. - data.scanAngle) * TO_RADIANS),
+						(data.scanDistance / 1000.) * std::cos((360. - data.scanAngle) * TO_RADIANS))};
+	});
 
-	if (inColision < 0) {
+	EndPoint colisionEndPoint = detectCollision(endPoints, angle);
+	m_collision = colisionEndPoint.point;
+
+	if (colisionEndPoint.index < 0) {
 		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
 		qDebug() << "No collision detected";
 		return;
 	}
 
-	qDebug() << "Collision point detected: " << collisionPoint;
+	qDebug() << "Collision point detected: " << colisionEndPoint.point;
 
 	// TODO: BFS to parse lidar data. We start at the colision point and move to all the points that are closer than cca 60cm.
 	// This will ensure that the ends are found. The ends are the points that have the least points in their surroundings.
-	auto [left, right] = findObjectEndPoints(lidarMeasurement, inColision, collisionPoint);
+	auto [left, right] = findObjectEndPoints(endPoints, colisionEndPoint);
 }
 
-QPair<QPointF,QPointF> MainWindow::findObjectEndPoints(const LaserMeasurement &lidarData, int inCollision, const QPointF &collisionPoint)
+QPair<QPointF,QPointF> MainWindow::findObjectEndPoints(const EndPointVector &endPointVector, const EndPoint &endPoint)
 {
 	
 }
 
-QPair<int, QPointF> MainWindow::detectCollision(const LaserMeasurement &lidarMeasurement, double angle)
+MainWindow::EndPoint MainWindow::detectCollision(const EndPointVector &endPoints, double angle)
 {
-	QVector<LaserData> data(lidarMeasurement.Data, lidarMeasurement.Data+lidarMeasurement.numberOfScans);
+	// QVector<LaserData> data(endPoints.Data, lidarMeasurement.Data+lidarMeasurement.numberOfScans);
 	angle *= TO_DEGREES;
 
 	m_collisionCircle.clear();
 
-	for (size_t i = 0; i < data.size(); i++) {
-		LaserData point = data[i];
+	for (size_t i = 0; i < endPoints.size(); i++) {
+		EndPoint point = endPoints[i];
 
-		m_collisionCircle.push_back({point.scanDistance * std::sin((360. - point.scanAngle) * TO_RADIANS), point.scanDistance * std::cos((360. - point.scanAngle) * TO_RADIANS)});
+		m_collisionCircle.push_back(point.point);
 
-		if (std::abs(point.scanAngle - (360. - angle)) > 45) {
+		if (std::abs(point.laserData.scanAngle - (360. - angle)) > 45) {
 			continue;
 		}
 
-		qDebug() << point.scanAngle;
-		if (point.scanDistance == 0) {
+		qDebug() << point.laserData.scanAngle;
+		if (point.laserData.scanDistance == 0) {
 			continue;
 		}
 
-		auto dCrit = (robot.b * 1000) / std::sin((360. - (point.scanAngle - (360 - angle))) * TO_RADIANS);
-		qDebug() << "Critical: " << double(dCrit) << " Measured " << point.scanDistance;
-		bool inCollision = dCrit > point.scanDistance;
+		auto dCrit = (robot.b * 1000) / std::sin((360. - (point.laserData.scanAngle - (360 - angle))) * TO_RADIANS);
+		qDebug() << "Critical: " << double(dCrit) << " Measured " << point.laserData.scanDistance;
+		bool inCollision = dCrit > point.laserData.scanDistance;
 
 		if (inCollision) {
-			double x = (point.scanDistance / 1000.) * std::sin((360. - point.scanAngle) * TO_RADIANS);
-			double y = (point.scanDistance / 1000.) * std::cos((360. - point.scanAngle) * TO_RADIANS);
-			qDebug() << "Distance: " << point.scanDistance << " angle: " << 360. - point.scanAngle;
+			double x = (point.laserData.scanDistance / 1000.) * std::sin((360. - point.laserData.scanAngle) * TO_RADIANS);
+			double y = (point.laserData.scanDistance / 1000.) * std::cos((360. - point.laserData.scanAngle) * TO_RADIANS);
+			qDebug() << "Distance: " << point.laserData.scanDistance << " angle: " << 360. - point.laserData.scanAngle;
 			qDebug() << "Collision point: " << QPointF(x, y);
-			return {i, QPointF(x, y)};
+			return point;
 		}
 	}
-	return {-1, {}};
+	return {-1, {}, {}};
 }
 
 QPair<double, double> MainWindow::calculateTrajectory()
