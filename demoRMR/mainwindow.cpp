@@ -312,26 +312,25 @@ void MainWindow::calculateTrajectoryWithObstacle()
 
 	auto [inColision, collisionPoint] = detectCollision(lidarMeasurement, angle);
 
-	if (!inColision) {
+	if (inColision < 0) {
 		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
 		qDebug() << "No collision detected";
 		return;
 	}
 
 	qDebug() << "Collision point detected: " << collisionPoint;
-	m_collision = collisionPoint;
 
 	// TODO: BFS to parse lidar data. We start at the colision point and move to all the points that are closer than cca 60cm.
 	// This will ensure that the ends are found. The ends are the points that have the least points in their surroundings.
-	auto [left, right] = findObjectEndPoints(lidarMeasurement, collisionPoint);
+	auto [left, right] = findObjectEndPoints(lidarMeasurement, inColision, collisionPoint);
 }
 
-QPair<QPointF,QPointF> MainWindow::findObjectEndPoints(const LaserMeasurement &lidarData, const QPointF &collisionPoint)
+QPair<QPointF,QPointF> MainWindow::findObjectEndPoints(const LaserMeasurement &lidarData, int inCollision, const QPointF &collisionPoint)
 {
 	
 }
 
-QPair<bool, QPointF> MainWindow::detectCollision(const LaserMeasurement &lidarMeasurement, double angle)
+QPair<int, QPointF> MainWindow::detectCollision(const LaserMeasurement &lidarMeasurement, double angle)
 {
 	QVector<LaserData> data(lidarMeasurement.Data, lidarMeasurement.Data+lidarMeasurement.numberOfScans);
 	angle *= TO_DEGREES;
@@ -361,10 +360,10 @@ QPair<bool, QPointF> MainWindow::detectCollision(const LaserMeasurement &lidarMe
 			double y = (point.scanDistance / 1000.) * std::cos((360. - point.scanAngle) * TO_RADIANS);
 			qDebug() << "Distance: " << point.scanDistance << " angle: " << 360. - point.scanAngle;
 			qDebug() << "Collision point: " << QPointF(x, y);
-			return {true, QPointF(x, y)};
+			return {i, QPointF(x, y)};
 		}
 	}
-	return {false, {}};
+	return {-1, {}};
 }
 
 QPair<double, double> MainWindow::calculateTrajectory()
