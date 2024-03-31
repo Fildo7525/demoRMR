@@ -57,6 +57,7 @@ private:
 	void _calculateTrajectory(RobotTrajectoryController::MovementType type);
 	void calculateTrajectoryWithObstacle();
 	QPair<QPointF,QPointF> findObjectEndPoints(const LaserMeasurement &lidarData, const QPointF &collisionPoint);
+	QPair<bool, QPointF> detectCollision(const LaserMeasurement &lidarMeasurement, double angle);
 
 private slots:
 	void on_pushButton_8_clicked();
@@ -152,6 +153,7 @@ private:
 	double m_fiCorrection;
 
 	QPointF m_collision;
+	QVector<QPointF> m_collisionCircle;
 };
 
 #endif // MAINWINDOW_H

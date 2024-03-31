@@ -14,7 +14,7 @@ find_package(OpenCV REQUIRED)
 find_package(SDL REQUIRED)
 
 add_subdirectory(robot)
-add_subdirectory(QJoysticks-master)
+# add_subdirectory(QJoysticks-master)
 
 set(HEADERS
 	mainwindow.h
@@ -51,6 +51,6 @@ PUBLIC
 	Qt::Widgets
 	${OpenCV_LIBS}
 	robot
-	qjoysticks
+#	qjoysticks
 )
 

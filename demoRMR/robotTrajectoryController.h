@@ -10,6 +10,7 @@
 #include <memory>
 
 #define TO_RADIANS 3.14159 / 180.0
+#define TO_DEGREES 180.0 / 3.14159
 
 QPointF computeLineParameters(QPointF p1, QPointF p2);
 

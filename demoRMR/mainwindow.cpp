@@ -62,7 +62,7 @@ MainWindow::MainWindow(QWidget *parent)
 	// Object for managing the robot speed interactions.
 	m_trajectoryController = std::make_shared<RobotTrajectoryController>(&robot, this);
 
-	m_floodPlanner = std::make_shared<FloodPlanner>("map.txt");
+	m_floodPlanner = std::make_shared<FloodPlanner>("/home/fildo7525/Documents/STU/LS/RMR/demoRMR-all/demoRMR/map.txt");
 
 	// Creating all connections
 	connect(this, &MainWindow::moveForward, m_trajectoryController.get(), &RobotTrajectoryController::onMoveForwardMove, Qt::QueuedConnection);
@@ -137,10 +137,17 @@ void MainWindow::paintEvent(QPaintEvent *event)
 			}
 		}
 	}
+	pero.setColor(Qt::cyan);
+	pero.setWidth(4);
+	painter.setPen(pero);
+	for(const auto &point : m_collisionCircle) {
+		painter.drawEllipse(QPointF(rect.width(), rect.height()) - (point / 10. + QPointF{rect.width()/2., rect.height()/2.}) + QPointF(rect.topLeft()), 2, 2);
+	}
+
 	pero.setColor(Qt::red);
 	pero.setWidth(4);
 	painter.setPen(pero);
-	painter.drawEllipse(QPointF(rect.width(), rect.height()) - m_collision/1000./20. + QPointF{rect.width()/2., rect.height()/2.}, 2, 2);
+	painter.drawEllipse(QPointF(rect.width(), rect.height()) - (m_collision*1000 / 10 + QPointF{rect.width()/2., rect.height()/2.}) + QPointF(rect.topLeft()), 2, 2);
 }
 
 ///toto je calback na data z lidaru, ktory ste podhodili robotu vo funkcii on_pushButton_9_clicked
@@ -302,32 +309,12 @@ void MainWindow::calculateTrajectoryWithObstacle()
 	QPointF max(m_xTarget, m_yTarget);
 	QPointF line = computeLineParameters(min, max);
 	LaserMeasurement lidarMeasurement = copyOfLaserData;
-	QPointF collisionPoint(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
 
-	bool inColision = std::any_of(
-		std::begin(lidarMeasurement.Data),
-		std::begin(lidarMeasurement.Data)+lidarMeasurement.numberOfScans,
-		[this, &collisionPoint] (const LaserData &point) mutable {
-			if (point.scanDistance == 0) {
-				return false;
-			}
-
-			auto dist = std::sin(point.scanAngle) * point.scanDistance;
-			qDebug() << "Dist: " << dist << " robot: " << float(robot.b*1000);
-			bool d = std::abs(dist) < robot.b * 1000;
-			if (d) {
-				double x = point.scanDistance * 2 * std::cos(360. - point.scanAngle * TO_RADIANS);
-				double y = point.scanDistance * 2 * std::sin(360. - point.scanAngle * TO_RADIANS);
-				qDebug() << "Distance: " << point.scanDistance << " angle: " << point.scanAngle;
-				qDebug() << "Collision point: " << QPointF(x, y);
-				collisionPoint = {x, y};
-			}
-
-			return d;
-	});
+	auto [inColision, collisionPoint] = detectCollision(lidarMeasurement, angle);
 
 	if (!inColision) {
 		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
+		qDebug() << "No collision detected";
 		return;
 	}
 
@@ -337,14 +324,47 @@ void MainWindow::calculateTrajectoryWithObstacle()
 	// TODO: BFS to parse lidar data. We start at the colision point and move to all the points that are closer than cca 60cm.
 	// This will ensure that the ends are found. The ends are the points that have the least points in their surroundings.
 	auto [left, right] = findObjectEndPoints(lidarMeasurement, collisionPoint);
-
-
-
 }
 
 QPair<QPointF,QPointF> MainWindow::findObjectEndPoints(const LaserMeasurement &lidarData, const QPointF &collisionPoint)
 {
 	
+}
+
+QPair<bool, QPointF> MainWindow::detectCollision(const LaserMeasurement &lidarMeasurement, double angle)
+{
+	QVector<LaserData> data(lidarMeasurement.Data, lidarMeasurement.Data+lidarMeasurement.numberOfScans);
+	angle *= TO_DEGREES;
+
+	m_collisionCircle.clear();
+
+	for (size_t i = 0; i < data.size(); i++) {
+		LaserData point = data[i];
+
+		m_collisionCircle.push_back({point.scanDistance * std::sin((360. - point.scanAngle) * TO_RADIANS), point.scanDistance * std::cos((360. - point.scanAngle) * TO_RADIANS)});
+
+		if (std::abs(point.scanAngle - (360. - angle)) > 45) {
+			continue;
+		}
+
+		qDebug() << point.scanAngle;
+		if (point.scanDistance == 0) {
+			continue;
+		}
+
+		auto dCrit = (robot.b * 1000) / std::sin((360. - (point.scanAngle - (360 - angle))) * TO_RADIANS);
+		qDebug() << "Critical: " << double(dCrit) << " Measured " << point.scanDistance;
+		bool inCollision = dCrit > point.scanDistance;
+
+		if (inCollision) {
+			double x = (point.scanDistance / 1000.) * std::sin((360. - point.scanAngle) * TO_RADIANS);
+			double y = (point.scanDistance / 1000.) * std::cos((360. - point.scanAngle) * TO_RADIANS);
+			qDebug() << "Distance: " << point.scanDistance << " angle: " << 360. - point.scanAngle;
+			qDebug() << "Collision point: " << QPointF(x, y);
+			return {true, QPointF(x, y)};
+		}
+	}
+	return {false, {}};
 }
 
 QPair<double, double> MainWindow::calculateTrajectory()
