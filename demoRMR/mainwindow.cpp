@@ -11,6 +11,7 @@
 #include <QThread>
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 #include <qnamespace.h>
 
 static const QString IP_ADDRESSES[2] {"127.0.0.1", "192.168.1."};
@@ -147,7 +148,9 @@ void MainWindow::paintEvent(QPaintEvent *event)
 	pero.setColor(Qt::red);
 	pero.setWidth(4);
 	painter.setPen(pero);
-	painter.drawEllipse(QPointF(rect.width(), rect.height()) - (m_collision*1000 / 10 + QPointF{rect.width()/2., rect.height()/2.}) + QPointF(rect.topLeft()), 2, 2);
+	for(const auto &point : m_collision) {
+		painter.drawEllipse(QPointF(rect.width(), rect.height()) - (point*1000 / 10 + QPointF{rect.width()/2., rect.height()/2.}) + QPointF(rect.topLeft()), 2, 2);
+	}
 }
 
 ///toto je calback na data z lidaru, ktory ste podhodili robotu vo funkcii on_pushButton_9_clicked
@@ -325,8 +328,9 @@ void MainWindow::calculateTrajectoryWithObstacle()
 	});
 
 	EndPoint colisionEndPoint = detectCollision(endPoints, angle);
-	m_collision = colisionEndPoint.point;
+	qDebug() << "Collision point: " << colisionEndPoint.point;
 
+	m_collision.clear();
 	if (colisionEndPoint.index < 0) {
 		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
 		qDebug() << "No collision detected";
@@ -338,11 +342,52 @@ void MainWindow::calculateTrajectoryWithObstacle()
 	// TODO: BFS to parse lidar data. We start at the colision point and move to all the points that are closer than cca 60cm.
 	// This will ensure that the ends are found. The ends are the points that have the least points in their surroundings.
 	auto [left, right] = findObjectEndPoints(endPoints, colisionEndPoint);
+
+	m_collision.push_back(left);
+	m_collision.push_back(right);
+
 }
 
 QPair<QPointF,QPointF> MainWindow::findObjectEndPoints(const EndPointVector &endPointVector, const EndPoint &endPoint)
 {
-	
+	QPair<QPointF,QPointF> out;
+	QVector<double> distances, derivative;
+	EndPointVector object;
+
+	std::transform(std::begin(endPointVector), std::end(endPointVector), std::back_inserter(distances), [&](const EndPoint &point) {
+		return point.laserData.scanDistance;
+	});
+
+	std::adjacent_difference(distances.begin(), distances.end(), std::back_inserter(derivative));
+	derivative[0] = distances.back() - distances.front();
+
+	qDebug() << "Distances : " << distances;
+	qDebug() << "Derivative: " << derivative;
+
+	int idx = endPoint.index;
+	while(std::abs(derivative[idx]) < 600) {
+		if (idx == 0) {
+			idx = distances.size();
+		}
+		idx--;
+		qDebug() << "Idx: " << idx << " Derivative: " << derivative[idx];
+	}
+	out.first = endPointVector[idx].point;
+
+	idx = endPoint.index+1;
+	qDebug() << "Staring: Idx: " << idx << " Derivative: " << derivative[idx];
+	while(std::abs(derivative[idx]) < 600) {
+		if (idx+1 == distances.size()) {
+			idx = -1;
+		}
+		idx++;
+		qDebug() << "Idx: " << idx << " Derivative: " << derivative[idx];
+	}
+
+	qDebug() << "Right end point: " << endPointVector[idx-1].point;
+	out.second = endPointVector[idx-1].point;
+
+	return out;
 }
 
 MainWindow::EndPoint MainWindow::detectCollision(const EndPointVector &endPoints, double angle)
@@ -357,9 +402,10 @@ MainWindow::EndPoint MainWindow::detectCollision(const EndPointVector &endPoints
 
 		m_collisionCircle.push_back(point.point);
 
-		if (std::abs(point.laserData.scanAngle - (360. - angle)) > 45) {
-			continue;
-		}
+		// m_viewLines[0] = QLineF(QPointF(m_x, m_y), QPointF(m_x, m_y) + QPointF(1000 * std::sin(point.laserData.scanAngle - (360. - angle)), 1000 * std::cos(point.laserData.scanAngle - (360. - angle))));
+		// if (std::abs(point.laserData.scanAngle - (360. - angle) + m_fi*TO_DEGREES) > 45) {
+		// 	continue;
+		// }
 
 		qDebug() << point.laserData.scanAngle;
 		if (point.laserData.scanDistance == 0) {

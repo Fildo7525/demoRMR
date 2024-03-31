@@ -4,6 +4,7 @@
 #include "floodPlanner.h"
 #include <QMainWindow>
 #include <QTimer>
+#include <qline.h>
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -160,8 +161,10 @@ private:
 	bool m_robotStartupLocation;
 	double m_fiCorrection;
 
-	QPointF m_collision;
+	QVector<QPointF> m_collision;
 	QVector<QPointF> m_collisionCircle;
+	QLineF m_viewLines[2];
+	QLineF m_collisionLine;
 };
 
 #endif // MAINWINDOW_H
