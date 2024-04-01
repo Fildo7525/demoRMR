@@ -612,7 +612,78 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, d
             doFinalTransport();
         }
     }
+    else
+    {
+        applyDifferentiation(laserData, actual_X, actual_Y);
+    }
 
+}
+
+void MainWindow::applyDifferentiation(LaserMeasurement& laserData, double actual_X, double actual_Y) {
+
+    // Compute differentiation
+    laserDataDiff.numberOfScans = laserData.numberOfScans - 1;
+    for (size_t i = 0; i < laserData.numberOfScans - 1; ++i) {
+        laserDataDiff.Data[i].scanDistance = laserData.Data[i+1].scanDistance - laserData.Data[i].scanDistance;
+        laserDataDiff.Data[i].scanAngle = laserData.Data[i].scanAngle;
+
+        if(abs(laserDataDiff.Data[i].scanDistance/1000.0) > 0.5 )
+        {
+            std::cout << "Corner at angle: " << laserDataDiff.Data[i].scanAngle;
+
+            obstacleCorner thisObstacleCorner;
+            thisObstacleCorner.direction = laserDataDiff.Data[i].scanDistance > 0;
+
+            if(thisObstacleCorner.direction)
+                thisObstacleCorner.cornerPos = computeTargetPosition(actual_X, actual_Y, laserData.Data[i].scanAngle, laserData.Data[i].scanDistance/1000.0, thisObstacleCorner.direction);
+            else
+                thisObstacleCorner.cornerPos = computeTargetPosition(actual_X, actual_Y, laserData.Data[i+1].scanAngle, laserData.Data[i+1].scanDistance/1000.0, thisObstacleCorner.direction);
+
+            thisObstacleCorner.firstPathLen = computeDistance(actual_X, actual_Y, thisObstacleCorner.cornerPos.x(), thisObstacleCorner.cornerPos.y());
+            thisObstacleCorner.secondPathLen = computeDistance(thisObstacleCorner.cornerPos.x(), thisObstacleCorner.cornerPos.y(), autoModeTarget_X,autoModeTarget_Y);
+            thisObstacleCorner.totalPathLen =  thisObstacleCorner.firstPathLen + thisObstacleCorner.secondPathLen;
+
+            std::cout << "at pos: (" << thisObstacleCorner.cornerPos.x() << ", " << thisObstacleCorner.cornerPos.y() << ")";
+
+            std::cout << "at dir: " << thisObstacleCorner.direction;
+
+            std::cout << "first path: " << thisObstacleCorner.firstPathLen;
+            std::cout << "second path: " <<  thisObstacleCorner.secondPathLen;
+            std::cout << "sum: " <<   thisObstacleCorner.totalPathLen << std::endl;
+        }
+    }
+
+}
+
+QPointF MainWindow::computeTargetPosition(double actual_X, double actual_Y, double angleToTarget_deg, double distanceToTarget, bool dir) {
+    // Convert angle from degrees to radians
+    double angleToTarget_rad = angleToTarget_deg * M_PI / 180.0;
+
+    double X_target;
+    double Y_target;
+
+    if(dir)
+    {
+        // Compute X and Y components of the target position relative to the robot
+        double deltaX = distanceToTarget * cos(angleToTarget_rad);
+        double deltaY = distanceToTarget * sin(angleToTarget_rad);
+
+        // Compute the target position relative to the robot's position
+        X_target = actual_X + deltaX;
+        Y_target = actual_Y - deltaY;
+    }
+    else
+    {
+        // Compute X and Y components of the target position relative to the robot
+        double deltaX = distanceToTarget * cos(angleToTarget_rad);
+        double deltaY = distanceToTarget * sin(angleToTarget_rad);
+
+        // Compute the target position relative to the robot's position
+        X_target = actual_X + deltaX;
+        Y_target = actual_Y - deltaY;
+    }
+
+    return QPointF(X_target, Y_target);
 }
 
 void MainWindow::doFinalTransport()

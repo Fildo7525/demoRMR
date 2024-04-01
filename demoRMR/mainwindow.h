@@ -23,6 +23,16 @@
 #include "lidarMapper.h"
 
 #define TILE_SIZE 13.
+#define MAX_OBSTACLE_CORNERS 10
+
+struct obstacleCorner {
+    QPointF cornerPos;
+    double firstPathLen;
+    double secondPathLen;
+    double totalPathLen;
+    bool direction; // true-right, false-left
+    // Add other members as needed
+};
 
 namespace Ui {
 class MainWindow;
@@ -57,6 +67,7 @@ private:
 	void _calculateTrajectory(RobotTrajectoryController::MovementType type);
     double computeDistance(double x1, double y1, double x2, double y2);
     double computeAngle(double x1, double y1, double x2, double y2, double acutal_Fi);
+    QPointF computeTargetPosition(double actual_X, double actual_Y, double angleToTarget_deg, double distanceToTarget, bool dir);
 
 private slots:
 	void on_pushButton_8_clicked();
@@ -89,6 +100,7 @@ private slots:
     void obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, double actual_X, double actual_Y, double actual_Fi);
     bool doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget);
     void doFinalTransport();
+    void applyDifferentiation(LaserMeasurement& laserData, double actual_X, double actual_Y);
 
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);
@@ -161,6 +173,8 @@ private:
     double autoModeInit_X;
     double autoModeInit_Y;
     bool finalTransportStarted;
+    LaserMeasurement laserDataDiff;
+    obstacleCorner obstacleCorners[MAX_OBSTACLE_CORNERS];
 };
 
 #endif // MAINWINDOW_H
