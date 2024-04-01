@@ -100,7 +100,7 @@ private slots:
     void obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, double actual_X, double actual_Y, double actual_Fi);
     bool doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget);
     void doFinalTransport();
-    void applyDifferentiation(LaserMeasurement& laserData, double actual_X, double actual_Y);
+    void analyseCorners(LaserMeasurement& laserData, double actual_X, double actual_Y);
 
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);
@@ -175,6 +175,8 @@ private:
     bool finalTransportStarted;
     LaserMeasurement laserDataDiff;
     obstacleCorner obstacleCorners[MAX_OBSTACLE_CORNERS];
+    int cornersAvailable;
+    bool checkCorners;
 };
 
 #endif // MAINWINDOW_H
