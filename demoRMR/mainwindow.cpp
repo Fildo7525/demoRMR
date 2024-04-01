@@ -151,6 +151,18 @@ void MainWindow::paintEvent(QPaintEvent *event)
 	for(const auto &point : m_collision) {
 		painter.drawEllipse(QPointF(rect.width(), rect.height()) - (point*1000 / 10 + QPointF{rect.width()/2., rect.height()/2.}) + QPointF(rect.topLeft()), 2, 2);
 	}
+
+	for (const auto &line : m_viewLines) {
+		auto p1 = QPointF(rect.width(), rect.height()) - (line.p1()*1000 / 10 + QPointF{rect.width()/2., rect.height()/2.}) + QPointF(rect.topLeft());
+		auto p2 = QPointF(rect.width(), rect.height()) - (line.p2()*1000 / 10 + QPointF{rect.width()/2., rect.height()/2.}) + QPointF(rect.topLeft());
+		painter.drawLine(p1, p2);
+	}
+
+	pero.setColor(Qt::green);
+	painter.setPen(pero);
+	auto p1 = QPointF(rect.width(), rect.height()) - (m_collisionLine.p1()*1000 / 10 + QPointF{rect.width()/2., rect.height()/2.}) + QPointF(rect.topLeft());
+	auto p2 = QPointF(rect.width(), rect.height()) - (m_collisionLine.p2()*1000 / 10 + QPointF{rect.width()/2., rect.height()/2.}) + QPointF(rect.topLeft());
+	painter.drawLine(p1, p2);
 }
 
 ///toto je calback na data z lidaru, ktory ste podhodili robotu vo funkcii on_pushButton_9_clicked
@@ -329,6 +341,10 @@ void MainWindow::calculateTrajectoryWithObstacle()
 
 	EndPoint colisionEndPoint = detectCollision(endPoints, angle);
 	qDebug() << "Collision point: " << colisionEndPoint.point;
+	m_collisionLine = QLineF(
+		QPointF(0, 0),
+		colisionEndPoint.point
+	);
 
 	m_collision.clear();
 	if (colisionEndPoint.index < 0) {
@@ -339,8 +355,6 @@ void MainWindow::calculateTrajectoryWithObstacle()
 
 	qDebug() << "Collision point detected: " << colisionEndPoint.point;
 
-	// TODO: BFS to parse lidar data. We start at the colision point and move to all the points that are closer than cca 60cm.
-	// This will ensure that the ends are found. The ends are the points that have the least points in their surroundings.
 	auto [left, right] = findObjectEndPoints(endPoints, colisionEndPoint);
 
 	m_collision.push_back(left);
@@ -373,6 +387,10 @@ QPair<QPointF,QPointF> MainWindow::findObjectEndPoints(const EndPointVector &end
 		qDebug() << "Idx: " << idx << " Derivative: " << derivative[idx];
 	}
 	out.first = endPointVector[idx].point;
+	m_viewLines[0] = QLineF(
+		QPointF(0, 0),
+		out.first
+	);
 
 	idx = endPoint.index+1;
 	qDebug() << "Staring: Idx: " << idx << " Derivative: " << derivative[idx];
@@ -386,6 +404,10 @@ QPair<QPointF,QPointF> MainWindow::findObjectEndPoints(const EndPointVector &end
 
 	qDebug() << "Right end point: " << endPointVector[idx-1].point;
 	out.second = endPointVector[idx-1].point;
+	m_viewLines[1] = QLineF(
+		QPointF(0, 0),
+		out.second
+	);
 
 	return out;
 }
@@ -402,7 +424,6 @@ MainWindow::EndPoint MainWindow::detectCollision(const EndPointVector &endPoints
 
 		m_collisionCircle.push_back(point.point);
 
-		// m_viewLines[0] = QLineF(QPointF(m_x, m_y), QPointF(m_x, m_y) + QPointF(1000 * std::sin(point.laserData.scanAngle - (360. - angle)), 1000 * std::cos(point.laserData.scanAngle - (360. - angle))));
 		// if (std::abs(point.laserData.scanAngle - (360. - angle) + m_fi*TO_DEGREES) > 45) {
 		// 	continue;
 		// }
@@ -416,7 +437,7 @@ MainWindow::EndPoint MainWindow::detectCollision(const EndPointVector &endPoints
 		qDebug() << "Critical: " << double(dCrit) << " Measured " << point.laserData.scanDistance;
 		bool inCollision = dCrit > point.laserData.scanDistance;
 
-		if (inCollision) {
+		if (inCollision && std::abs(point.laserData.scanAngle - angle) < 45) {
 			double x = (point.laserData.scanDistance / 1000.) * std::sin((360. - point.laserData.scanAngle) * TO_RADIANS);
 			double y = (point.laserData.scanDistance / 1000.) * std::cos((360. - point.laserData.scanAngle) * TO_RADIANS);
 			qDebug() << "Distance: " << point.laserData.scanDistance << " angle: " << 360. - point.laserData.scanAngle;
