@@ -52,6 +52,7 @@ public:
 	void moveByArcTo(double distance, double rotation);
 
 private:
+	QPointF getNextPoint();
 	bool isNear(double currentVelocity);
 	double finalDistanceError();
 	double localDistanceError();

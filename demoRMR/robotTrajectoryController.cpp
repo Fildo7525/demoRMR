@@ -4,7 +4,6 @@
 #include "robotTrajectoryController.h"
 #include <QDebug>
 #include <QTimer>
-#include <algorithm>
 #include <memory>
 
 QPointF computeLineParameters(QPointF p1, QPointF p2)
@@ -159,6 +158,19 @@ void RobotTrajectoryController::moveByArcTo(double distance, double rotation)
 	m_positionTimer.start();
 }
 
+QPointF RobotTrajectoryController::getNextPoint()
+{
+	QPointF point;
+	if (m_points.empty()){
+		MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
+		point = {win->m_x, win->m_y};
+	}
+	else {
+		point = m_points.first();
+	}
+	return point;
+}
+
 bool RobotTrajectoryController::isNear(double currentVelocity)
 {
 	return std::abs(currentVelocity - m_targetVelocity) <= std::abs(m_accelerationRate / 2.);
@@ -173,7 +185,7 @@ double RobotTrajectoryController::finalDistanceError()
 
 double RobotTrajectoryController::localDistanceError()
 {
-	QPointF point = m_points.first();
+	QPointF point = getNextPoint();
 
 	MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
 	auto [distance, rotation] = win->calculateTrajectoryTo({ point.x(), point.y() });
@@ -189,7 +201,10 @@ double RobotTrajectoryController::finalRotationError()
 
 double RobotTrajectoryController::localRotationError()
 {
-	QPointF point = m_points.first();
+	QPointF point = getNextPoint();
+	if (m_points.empty()) {
+		point += {2 * std::sin(m_controller->target()), 2 * std::cos(m_controller->target())};
+	}
 
 	MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
 	return win->localRotationError({ point.x(), point.y() });
@@ -266,8 +281,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 	}
 
 	if (std::abs(error) < maxCorrection) {
-
-		if (m_movementType == MovementType::Rotation && !m_arcExpected) {
+		if (m_movementType == MovementType::Rotation && !m_arcExpected && !m_points.empty()) {
 			emit requestMovement(localDistanceError());
 		}
 		else if (m_movementType == MovementType::Rotation && m_arcExpected) {
