@@ -40,6 +40,7 @@ MainWindow::MainWindow(QWidget *parent)
     , autoModeTarget_Y(0)
     , autoModeInit_X(0)
     , autoModeInit_Y(0)
+    , finalTransportStarted(false)
     , m_robotStartupLocation(false)
 {
 	qDebug() << "MainWindow starting";
@@ -578,19 +579,38 @@ void MainWindow::obstacleAvoidanceTrajectoryInit(double X_target, double Y_targe
     autoModeInit_X = actual_X;
     autoModeInit_Y = actual_Y;
     std::cout << "To do: " << autoModeTarget_X << " " << autoModeTarget_Y << std::endl;
+    finalTransportStarted = false;
 
 }
 
 void MainWindow::obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, double actual_X, double actual_Y, double actual_Fi)
 {
-    static int i = 0;
+//    std::cout << "Input values for computeDistance:" << std::endl;
+//    std::cout << "actual_X: " << actual_X << std::endl;
+//    std::cout << "actual_Y: " << actual_Y << std::endl;
+//    std::cout << "autoModeTarget_X: " << autoModeTarget_X << std::endl;
+//    std::cout << "autoModeTarget_Y: " << autoModeTarget_Y << std::endl;
     double distanceToTarget = computeDistance(actual_X,actual_Y,autoModeTarget_X,autoModeTarget_Y);
+
+//    std::cout << "\nInput values for computeAngle:" << std::endl;
+//    std::cout << "actual_X: " << actual_X << std::endl;
+//    std::cout << "actual_Y: " << actual_Y << std::endl;
+//    std::cout << "autoModeTarget_X: " << autoModeTarget_X << std::endl;
+//    std::cout << "autoModeTarget_Y: " << autoModeTarget_Y << std::endl;
+//    std::cout << "actual_Fi: " << actual_Fi << std::endl;
     double angleToTarget =  computeAngle(actual_X,actual_Y,autoModeTarget_X,autoModeTarget_Y, actual_Fi);
+
+//    std::cout << "Distance to target: " << distanceToTarget << std::endl;
+//    std::cout << "Angle to target: " << angleToTarget << std::endl;
+
     if (doISeeTheTarget(laserData,angleToTarget,distanceToTarget))
     {
-        std::cout << "target visible at: " << angleToTarget << std::endl;
-        doFinalTransport();
-
+        if(!finalTransportStarted)
+        {
+            std::cout << "target visible at: " << angleToTarget << std::endl;
+            finalTransportStarted = true;
+            doFinalTransport();
+        }
     }
 
 }
@@ -598,14 +618,14 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, d
 void MainWindow::doFinalTransport()
 {
 
-        std::cout << "Final transport started" << std::endl;
-        bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
-        bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
+    std::cout << "Final transport started" << std::endl;
+    bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
+    bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
 
-        if (ok1 && ok2) {
-            _calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
-        }
-        m_isInAutoMode = false;
+    if (ok1 && ok2) {
+        _calculateTrajectory(RobotTrajectoryController::MovementType::Forward);
+    }
+    m_isInAutoMode = false;
 
 }
 

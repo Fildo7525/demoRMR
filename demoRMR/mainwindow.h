@@ -160,6 +160,7 @@ private:
     double autoModeTarget_Y;
     double autoModeInit_X;
     double autoModeInit_Y;
+    bool finalTransportStarted;
 };
 
 #endif // MAINWINDOW_H
