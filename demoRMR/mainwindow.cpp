@@ -319,6 +319,8 @@ void MainWindow::_calculateTrajectory(RobotTrajectoryController::MovementType ty
 void MainWindow::calculateTrajectoryWithObstacle()
 {
 	auto [distance, angle] = calculateTrajectory();
+	angle -= m_fi;
+	qDebug() << "\n==============================\nCalculated Angle: " << angle * TO_DEGREES;
 
 	QPointF min(m_x, m_y);
 	QPointF max(m_xTarget, m_yTarget);
@@ -347,8 +349,10 @@ void MainWindow::calculateTrajectoryWithObstacle()
 	);
 
 	m_collision.clear();
+	m_viewLines[0] = QLineF();
+	m_viewLines[1] = QLineF();
 	if (colisionEndPoint.index < 0) {
-		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
+		// _calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
 		qDebug() << "No collision detected";
 		return;
 	}
@@ -375,8 +379,8 @@ QPair<QPointF,QPointF> MainWindow::findObjectEndPoints(const EndPointVector &end
 	std::adjacent_difference(distances.begin(), distances.end(), std::back_inserter(derivative));
 	derivative[0] = distances.back() - distances.front();
 
-	qDebug() << "Distances : " << distances;
-	qDebug() << "Derivative: " << derivative;
+	// qDebug() << "Distances : " << distances;
+	// qDebug() << "Derivative: " << derivative;
 
 	int idx = endPoint.index;
 	while(std::abs(derivative[idx]) < 600) {
@@ -384,7 +388,7 @@ QPair<QPointF,QPointF> MainWindow::findObjectEndPoints(const EndPointVector &end
 			idx = distances.size();
 		}
 		idx--;
-		qDebug() << "Idx: " << idx << " Derivative: " << derivative[idx];
+		// qDebug() << "Idx: " << idx << " Derivative: " << derivative[idx];
 	}
 	out.first = endPointVector[idx].point;
 	m_viewLines[0] = QLineF(
@@ -393,16 +397,16 @@ QPair<QPointF,QPointF> MainWindow::findObjectEndPoints(const EndPointVector &end
 	);
 
 	idx = endPoint.index+1;
-	qDebug() << "Staring: Idx: " << idx << " Derivative: " << derivative[idx];
+	// qDebug() << "Staring: Idx: " << idx << " Derivative: " << derivative[idx];
 	while(std::abs(derivative[idx]) < 600) {
 		if (idx+1 == distances.size()) {
 			idx = -1;
 		}
 		idx++;
-		qDebug() << "Idx: " << idx << " Derivative: " << derivative[idx];
+		// qDebug() << "Idx: " << idx << " Derivative: " << derivative[idx];
 	}
 
-	qDebug() << "Right end point: " << endPointVector[idx-1].point;
+	// qDebug() << "Right end point: " << endPointVector[idx-1].point;
 	out.second = endPointVector[idx-1].point;
 	m_viewLines[1] = QLineF(
 		QPointF(0, 0),
@@ -415,9 +419,35 @@ QPair<QPointF,QPointF> MainWindow::findObjectEndPoints(const EndPointVector &end
 MainWindow::EndPoint MainWindow::detectCollision(const EndPointVector &endPoints, double angle)
 {
 	// QVector<LaserData> data(endPoints.Data, lidarMeasurement.Data+lidarMeasurement.numberOfScans);
+	if (angle < 0) {
+		angle += 2 * PI;
+	}
 	angle *= TO_DEGREES;
 
 	m_collisionCircle.clear();
+
+	static const int diff = 40;
+	qDebug() << "\n\n===================================\nAngle: " << angle;
+	double rightBound = angle - diff;
+	double leftBound = angle + diff;
+	if (rightBound < 0) {
+		rightBound += 360;
+	}
+	else if (rightBound > 360) {
+		rightBound -= 360;
+	}
+
+	if (leftBound < 0) {
+		leftBound += 360;
+	}
+	else if (leftBound > 360) {
+		leftBound -= 360;
+	}
+
+	rightBound = 360 - rightBound;
+	leftBound = 360 - leftBound;
+
+	qDebug() << "Left angle: " << leftBound << " Right angle: " << rightBound;
 
 	for (size_t i = 0; i < endPoints.size(); i++) {
 		EndPoint point = endPoints[i];
@@ -428,20 +458,29 @@ MainWindow::EndPoint MainWindow::detectCollision(const EndPointVector &endPoints
 		// 	continue;
 		// }
 
-		qDebug() << point.laserData.scanAngle;
+		// qDebug() << point.laserData.scanAngle;
 		if (point.laserData.scanDistance == 0) {
 			continue;
 		}
+		else if (leftBound > point.laserData.scanAngle || point.laserData.scanAngle > rightBound) {
+			// qDebug() << "[SKIPPING] Angle: " << point.laserData.scanAngle;
+			continue;
+		}
 
-		auto dCrit = (robot.b * 1000) / std::sin((360. - (point.laserData.scanAngle - (360 - angle))) * TO_RADIANS);
-		qDebug() << "Critical: " << double(dCrit) << " Measured " << point.laserData.scanDistance;
+		auto ang = (360. - (point.laserData.scanAngle - (360 - angle) - m_fi * TO_DEGREES)) * TO_RADIANS;
+		if (ang > PI) {
+			ang -= PI;
+		}
+		qDebug() << "Recalculated Angle: " << ang * TO_DEGREES;
+		auto dCrit = (robot.b * 1000) / std::sin(ang);
+
+		qDebug() << "Scanned angle: " << point.laserData.scanAngle << " Critical: " << double(dCrit) << " Measured " << point.laserData.scanDistance;
+		// qDebug() << "Critical: " << double(dCrit) << " Measured " << point.laserData.scanDistance;
 		bool inCollision = dCrit > point.laserData.scanDistance;
 
-		if (inCollision && std::abs(point.laserData.scanAngle - angle) < 45) {
-			double x = (point.laserData.scanDistance / 1000.) * std::sin((360. - point.laserData.scanAngle) * TO_RADIANS);
-			double y = (point.laserData.scanDistance / 1000.) * std::cos((360. - point.laserData.scanAngle) * TO_RADIANS);
+		if (inCollision) {
 			qDebug() << "Distance: " << point.laserData.scanDistance << " angle: " << 360. - point.laserData.scanAngle;
-			qDebug() << "Collision point: " << QPointF(x, y);
+			qDebug() << "Collision point: " << point.point;
 			return point;
 		}
 	}
@@ -454,7 +493,7 @@ QPair<double, double> MainWindow::calculateTrajectory()
 	auto [distanceToTarget, angleToTarget] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
 
 	ui->distanceToTarget->setText(QString::number(distanceToTarget));
-	ui->angleToTarget->setText(QString::number(angleToTarget));
+	ui->angleToTarget->setText(QString::number(angleToTarget - m_fi));
 
 	return { distanceToTarget, angleToTarget };
 }
