@@ -71,6 +71,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 	connect(this, &MainWindow::linResultsReady, m_trajectoryController.get(), &RobotTrajectoryController::handleLinResults, Qt::QueuedConnection);
 	connect(this, &MainWindow::arcResultsReady, m_trajectoryController.get(), &RobotTrajectoryController::handleArcResults, Qt::QueuedConnection);
+	connect(m_trajectoryController.get(), &RobotTrajectoryController::movementStopped, this, &MainWindow::_calculateTrajectoryWithObstacle, Qt::QueuedConnection);
 
 	connect(this, &MainWindow::lidarDataReady, m_trajectoryController.get(), &RobotTrajectoryController::on_lidarDataReady_map, Qt::QueuedConnection);
 	connect(this, &MainWindow::requestPath, m_floodPlanner.get(), &FloodPlanner::on_requestPath_plan, Qt::QueuedConnection);
@@ -299,6 +300,7 @@ static QVector<QPointF> generateSequence(const QPointF &min, const QPointF &max,
 
 void MainWindow::_calculateTrajectory(RobotTrajectoryController::MovementType type)
 {
+	m_avoidingObstacles = false;
 	auto [distance, angle] = calculateTrajectory();
 
 	QPointF min(m_x, m_y);
@@ -319,7 +321,18 @@ void MainWindow::_calculateTrajectory(RobotTrajectoryController::MovementType ty
 void MainWindow::calculateTrajectoryWithObstacle()
 {
 	auto [distance, angle] = calculateTrajectory();
+	m_avoidingObstacles = true;
+	emit linResultsReady(0, angle, {});
+}
 
+void MainWindow::_calculateTrajectoryWithObstacle()
+{
+	if (!m_avoidingObstacles) {
+		return;
+	}
+
+	auto [distance, angle] = calculateTrajectory();
+	qDebug() << "Trajectory: l: " << distance << " angle: " << angle;
 	QPointF min(m_x, m_y);
 	QPointF max(m_xTarget, m_yTarget);
 	QPointF line = computeLineParameters(min, max);
@@ -359,6 +372,7 @@ void MainWindow::calculateTrajectoryWithObstacle()
 
 	m_collision.push_back(left);
 	m_collision.push_back(right);
+
 
 }
 
@@ -424,9 +438,9 @@ MainWindow::EndPoint MainWindow::detectCollision(const EndPointVector &endPoints
 
 		m_collisionCircle.push_back(point.point);
 
-		// if (std::abs(point.laserData.scanAngle - (360. - angle) + m_fi*TO_DEGREES) > 45) {
-		// 	continue;
-		// }
+		if (point.laserData.scanAngle > 45 && point.laserData.scanAngle < 315) {
+			continue;
+		}
 
 		qDebug() << point.laserData.scanAngle;
 		if (point.laserData.scanDistance == 0) {

@@ -223,6 +223,7 @@ void RobotTrajectoryController::on_stoppingTimerTimeout_stop()
 
 	// m_stoppingTimer.setInterval(3'000);
 	m_stopped = true;
+	emit movementStopped();
 }
 
 void RobotTrajectoryController::on_accelerationTimerTimeout_control()

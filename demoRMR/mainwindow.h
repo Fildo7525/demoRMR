@@ -65,6 +65,7 @@ private:
 	void calculateOdometry(const TKobukiData &robotdata);
 	void _calculateTrajectory(RobotTrajectoryController::MovementType type);
 	void calculateTrajectoryWithObstacle();
+	void _calculateTrajectoryWithObstacle();
 	QPair<QPointF,QPointF> findObjectEndPoints(const EndPointVector &endPointVector, const EndPoint &endPoint);
 	EndPoint detectCollision(const EndPointVector &endPoints, double angle);
 
@@ -161,6 +162,7 @@ private:
 	bool m_robotStartupLocation;
 	double m_fiCorrection;
 
+	bool m_avoidingObstacles;
 	QVector<QPointF> m_collision;
 	QVector<QPointF> m_collisionCircle;
 	QLineF m_viewLines[2];

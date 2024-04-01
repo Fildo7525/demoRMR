@@ -77,6 +77,7 @@ public slots:
 
 public: signals:
 	void pointCloudCaluculated(QVector<QPointF> points);
+	void movementStopped();
 
 private:
 signals:
