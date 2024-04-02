@@ -17,20 +17,22 @@ add_subdirectory(robot)
 add_subdirectory(QJoysticks-master)
 
 set(HEADERS
+	ObstacleAvoider.h
+	floodPlanner.h
+	lidarMapper.h
 	mainwindow.h
 	pidcontroller.h
 	robotTrajectoryController.h
-	lidarMapper.h
-	floodPlanner.h
 )
 
 set(SOURCES
+	ObstacleAvoider.cpp
+	floodPlanner.cpp
+	lidarMapper.cpp
 	main.cpp
 	mainwindow.cpp
 	pidcontroller.cpp
 	robotTrajectoryController.cpp
-	lidarMapper.cpp
-	floodPlanner.cpp
 )
 
 set(UI

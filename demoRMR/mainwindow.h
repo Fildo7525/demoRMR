@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "ObstacleAvoider.h"
 #include "floodPlanner.h"
 #include <QMainWindow>
 #include <QTimer>
@@ -23,16 +24,6 @@
 #include "lidarMapper.h"
 
 #define TILE_SIZE 13.
-#define MAX_OBSTACLE_CORNERS 10
-
-struct obstacleCorner {
-    QPointF cornerPos;
-    double firstPathLen;
-    double secondPathLen;
-    double totalPathLen;
-    bool direction; // true-right, false-left
-    // Add other members as needed
-};
 
 namespace Ui {
 class MainWindow;
@@ -45,6 +36,7 @@ class MainWindow : public QMainWindow
 
 	friend class RobotTrajectoryController;
 	friend class LidarMapper;
+	friend class ObstacleAvoider;
 
 public:
 	explicit MainWindow(QWidget *parent = 0);
@@ -65,9 +57,6 @@ private:
 	void paintEvent(QPaintEvent *event); // Q_DECL_OVERRIDE;
 	void calculateOdometry(const TKobukiData &robotdata);
 	void _calculateTrajectory(RobotTrajectoryController::MovementType type);
-    double computeDistance(double x1, double y1, double x2, double y2);
-    double computeAngle(double x1, double y1, double x2, double y2, double acutal_Fi);
-    QPointF computeTargetPosition(double actual_X, double actual_Y, double angleToTarget_deg, double distanceToTarget, bool dir);
 
 private slots:
 	void on_pushButton_8_clicked();
@@ -96,14 +85,10 @@ private slots:
 	void onLinSubmitButtonClicked(bool clicked);
 	void onArcSubmitButtonClicked(bool clicked);
     void onLiveAvoidObstaclesButton_clicked(bool clicked);
-    void obstacleAvoidanceTrajectoryInit(double X_target, double Y_target, double actual_X, double actual_Y, double actual_Fi);
-    void obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, double actual_X, double actual_Y, double actual_Fi);
-    bool doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget);
-    void doFinalTransport();
-    void analyseCorners(LaserMeasurement& laserData, double actual_X, double actual_Y);
 
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);
+	void on_requestTrajectoryCalculate(double x, double y, RobotTrajectoryController::MovementType type);
 	void timeout();
 	void handlePath(QVector<QPointF> path);
 
@@ -122,6 +107,8 @@ signals:
 	void linResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 	void arcResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 	void lidarDataReady(LaserMeasurement laserData);
+	void requestAvoidance(double xTarget, double yTarget);
+	void handleTrajectory(const LaserMeasurement &laserData, double actual_X, double actual_Y, double actual_Fi);
 
 private:
 	bool useCamera1;
@@ -159,6 +146,7 @@ private:
 
 	QThread *m_controllerThread;
 	QThread *m_plannerThread;
+	QThread *m_obstacleAvoiderThread;
 	QMutex m_mutex;
 
 	double forwardspeed;  // mm/s
@@ -167,16 +155,7 @@ private:
 	bool m_robotStartupLocation;
 	double m_fiCorrection;
 
-    bool m_isInAutoMode;
-    double autoModeTarget_X;
-    double autoModeTarget_Y;
-    double autoModeInit_X;
-    double autoModeInit_Y;
-    bool finalTransportStarted;
-    LaserMeasurement laserDataDiff;
-    obstacleCorner obstacleCorners[MAX_OBSTACLE_CORNERS];
-    int cornersAvailable;
-    bool checkCorners;
+	ObstacleAvoider *m_obstacleAvoider;
 };
 
 #endif // MAINWINDOW_H
