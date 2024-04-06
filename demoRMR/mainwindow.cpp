@@ -35,6 +35,7 @@ MainWindow::MainWindow(QWidget *parent)
 	, m_yTarget(0)
 	, m_controllerThread(new QThread(this))
 	, m_plannerThread(new QThread(this))
+	, obstacleAvoidanceThread(new QThread(this))
     , m_isInAutoMode(false)
     , autoModeTarget_X(0)
     , autoModeTarget_Y(0)
@@ -82,6 +83,10 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(ui->linSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onLinSubmitButtonClicked, Qt::QueuedConnection);
 	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
     connect(ui->liveAvoidObstaclesButton, &QPushButton::clicked, this, &MainWindow::onLiveAvoidObstaclesButton_clicked, Qt::QueuedConnection);
+
+	QObject::connect(obstacleAvoidanceThread, &QThread::started, [this]() {
+		this->obstacleAvoidanceTrajectoryHandle();
+	});
 
 	// Starting threads
 	m_controllerThread->start();
@@ -199,10 +204,10 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 	}
 	datacounter++;
 
-    if (m_isInAutoMode)
-    {
-        obstacleAvoidanceTrajectoryHandle(copyOfLaserData,m_x,m_y,m_fi);
-    }
+//    if (m_isInAutoMode)
+//    {
+//        obstacleAvoidanceTrajectoryHandle(copyOfLaserData,m_x,m_y,m_fi);
+//    }
 
 	return 0;
 }
@@ -581,53 +586,60 @@ void MainWindow::obstacleAvoidanceTrajectoryInit(double X_target, double Y_targe
     std::cout << "To do: " << autoModeTarget_X << " " << autoModeTarget_Y << std::endl;
     finalTransportStarted = false;
     checkCorners = true;
+	obstacleAvoidanceThread->start();
 
 }
 
-void MainWindow::obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, double actual_X, double actual_Y, double actual_Fi)
+void MainWindow::obstacleAvoidanceTrajectoryHandle()
 {
-//    std::cout << "Input values for computeDistance:" << std::endl;
-//    std::cout << "actual_X: " << actual_X << std::endl;
-//    std::cout << "actual_Y: " << actual_Y << std::endl;
-//    std::cout << "autoModeTarget_X: " << autoModeTarget_X << std::endl;
-//    std::cout << "autoModeTarget_Y: " << autoModeTarget_Y << std::endl;
-    double distanceToTarget = computeDistance(actual_X,actual_Y,autoModeTarget_X,autoModeTarget_Y);
+	while(1)
+	{
+		if (m_isInAutoMode)
+		{
+			//    std::cout << "Input values for computeDistance:" << std::endl;
+			//    std::cout << "actual_X: " << actual_X << std::endl;
+			//    std::cout << "actual_Y: " << actual_Y << std::endl;
+			//    std::cout << "autoModeTarget_X: " << autoModeTarget_X << std::endl;
+			//    std::cout << "autoModeTarget_Y: " << autoModeTarget_Y << std::endl;
+				double distanceToTarget = computeDistance(m_x,m_y,autoModeTarget_X,autoModeTarget_Y);
 
-//    std::cout << "\nInput values for computeAngle:" << std::endl;
-//    std::cout << "actual_X: " << actual_X << std::endl;
-//    std::cout << "actual_Y: " << actual_Y << std::endl;
-//    std::cout << "autoModeTarget_X: " << autoModeTarget_X << std::endl;
-//    std::cout << "autoModeTarget_Y: " << autoModeTarget_Y << std::endl;
-//    std::cout << "actual_Fi: " << actual_Fi << std::endl;
-    double angleToTarget =  computeAngle(actual_X,actual_Y,autoModeTarget_X,autoModeTarget_Y, actual_Fi);
+			//    std::cout << "\nInput values for computeAngle:" << std::endl;
+			//    std::cout << "actual_X: " << actual_X << std::endl;
+			//    std::cout << "actual_Y: " << actual_Y << std::endl;
+			//    std::cout << "autoModeTarget_X: " << autoModeTarget_X << std::endl;
+			//    std::cout << "autoModeTarget_Y: " << autoModeTarget_Y << std::endl;
+			//    std::cout << "actual_Fi: " << actual_Fi << std::endl;
+				double angleToTarget =  computeAngle(m_x,m_y,autoModeTarget_X,autoModeTarget_Y,m_fi);
 
-//    std::cout << "Distance to target: " << distanceToTarget << std::endl;
-//    std::cout << "Angle to target: " << angleToTarget << std::endl;
+			//    std::cout << "Distance to target: " << distanceToTarget << std::endl;
+			//    std::cout << "Angle to target: " << angleToTarget << std::endl;
 
-    if (doISeeTheTarget(laserData,angleToTarget,distanceToTarget))
-    {
-        if(!finalTransportStarted)
-        {
-            std::cout << "target visible at: " << angleToTarget << std::endl;
-            finalTransportStarted = true;
-            doFinalTransport();
-        }
-    }
-    else
-    {
-        if(checkCorners)
-        {
-            checkCorners = false;
-            analyseCorners(laserData, actual_X, actual_Y);
-            if(cornersAvailable == 1)
-            {
-                m_xTarget = obstacleCorners[0].cornerPos.x();
-                m_yTarget = obstacleCorners[0].cornerPos.y();
-                std::cout << "Aproaching corner:" << m_xTarget << ", " << m_yTarget << std::endl;
-                _calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
-            }
-        }
-    }
+				if (doISeeTheTarget(copyOfLaserData,angleToTarget,distanceToTarget))
+				{
+					if(!finalTransportStarted)
+					{
+						std::cout << "target visible at: " << angleToTarget << std::endl;
+						finalTransportStarted = true;
+						doFinalTransport();
+					}
+				}
+				else
+				{
+					if(checkCorners)
+					{
+						checkCorners = false;
+						analyseCorners(copyOfLaserData, m_x,m_y);
+						if(cornersAvailable > 0)
+						{
+							m_xTarget = obstacleCorners[0].cornerPos.x();
+							m_yTarget = obstacleCorners[0].cornerPos.y();
+							std::cout << "Aproaching corner:" << m_xTarget << ", " << m_yTarget << std::endl;
+							_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
+						}
+					}
+				}
+			}
+	}
 
 }
 
@@ -655,7 +667,7 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
             thisObstacleCorner.secondPathLen = computeDistance(thisObstacleCorner.cornerPos.x(), thisObstacleCorner.cornerPos.y(), autoModeTarget_X,autoModeTarget_Y);
             thisObstacleCorner.totalPathLen =  thisObstacleCorner.firstPathLen + thisObstacleCorner.secondPathLen;
 
-            if(0)
+			if(1)
             {
                 std::cout << "Corner at angle: " << laserDataDiff.Data[i].scanAngle;
                 std::cout << "at pos: (" << thisObstacleCorner.cornerPos.x() << ", " << thisObstacleCorner.cornerPos.y() << ")";

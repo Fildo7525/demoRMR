@@ -97,7 +97,7 @@ private slots:
 	void onArcSubmitButtonClicked(bool clicked);
     void onLiveAvoidObstaclesButton_clicked(bool clicked);
     void obstacleAvoidanceTrajectoryInit(double X_target, double Y_target, double actual_X, double actual_Y, double actual_Fi);
-    void obstacleAvoidanceTrajectoryHandle(LaserMeasurement laserData, double actual_X, double actual_Y, double actual_Fi);
+	void obstacleAvoidanceTrajectoryHandle();
     bool doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget);
     void doFinalTransport();
     void analyseCorners(LaserMeasurement& laserData, double actual_X, double actual_Y);
@@ -159,6 +159,7 @@ private:
 
 	QThread *m_controllerThread;
 	QThread *m_plannerThread;
+	QThread *obstacleAvoidanceThread;
 	QMutex m_mutex;
 
 	double forwardspeed;  // mm/s
