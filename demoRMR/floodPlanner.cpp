@@ -344,9 +344,9 @@ std::ostream &operator<<(std::ostream &os, const FloodPlanner::Map &map)
 {
 	os << "  |";
 	for (size_t i = 0; i < map[0].size(); i++) {
-		os << std::setw(3) << i << "|";
+		os << std::setw(2) << i << "|";
 	}
-	os << std::endl << std::string(map[0].size() * 4 + 3, '-') << std::endl;
+	os << std::endl << std::string(map[0].size() * 3 + 3, '-') << std::endl;
 
 	int idx = 0;
 	for (const auto &row : map) {
@@ -354,23 +354,23 @@ std::ostream &operator<<(std::ostream &os, const FloodPlanner::Map &map)
 		os << std::setw(2) << idx++ << "|";
 		for (const auto &tile : row) {
 			if (tile == 0) {
-				os << "   ";
+				os << "  ";
 			}
 			else if (tile > 0) {
-				os << std::setw(3) << tile;
+				os << std::setw(2) << tile;
 			}
 			else if (tile == START_FLAG) {
-				os << " S ";
+				os << "SS";
 			}
 			else if (tile == END_FLAG) {
-				os << " E ";
+				os << "EE";
 			}
 			else {
-				os << "###";
+				os << "##";
 			}
 			os << '|';
 		}
-		os << std::endl << std::string(row.size() * 4 + 3, '-') << std::endl;
+		os << std::endl << std::string(row.size() * 3 + 3, '-') << std::endl;
 	}
 	return os;
 }
