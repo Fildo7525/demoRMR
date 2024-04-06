@@ -101,6 +101,7 @@ private slots:
     bool doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget);
     void doFinalTransport();
     void analyseCorners(LaserMeasurement& laserData, double actual_X, double actual_Y);
+	void findCornerWithShortestPath();
 
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);
@@ -176,6 +177,7 @@ private:
     bool finalTransportStarted;
     LaserMeasurement laserDataDiff;
     obstacleCorner obstacleCorners[MAX_OBSTACLE_CORNERS];
+	obstacleCorner cornerWithShortestPath;
     int cornersAvailable;
     bool checkCorners;
 };

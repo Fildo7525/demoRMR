@@ -596,49 +596,55 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 	{
 		if (m_isInAutoMode)
 		{
-			//    std::cout << "Input values for computeDistance:" << std::endl;
-			//    std::cout << "actual_X: " << actual_X << std::endl;
-			//    std::cout << "actual_Y: " << actual_Y << std::endl;
-			//    std::cout << "autoModeTarget_X: " << autoModeTarget_X << std::endl;
-			//    std::cout << "autoModeTarget_Y: " << autoModeTarget_Y << std::endl;
-				double distanceToTarget = computeDistance(m_x,m_y,autoModeTarget_X,autoModeTarget_Y);
+			double distanceToTarget = computeDistance(m_x,m_y,autoModeTarget_X,autoModeTarget_Y);
 
-			//    std::cout << "\nInput values for computeAngle:" << std::endl;
-			//    std::cout << "actual_X: " << actual_X << std::endl;
-			//    std::cout << "actual_Y: " << actual_Y << std::endl;
-			//    std::cout << "autoModeTarget_X: " << autoModeTarget_X << std::endl;
-			//    std::cout << "autoModeTarget_Y: " << autoModeTarget_Y << std::endl;
-			//    std::cout << "actual_Fi: " << actual_Fi << std::endl;
-				double angleToTarget =  computeAngle(m_x,m_y,autoModeTarget_X,autoModeTarget_Y,m_fi);
+			double angleToTarget =  computeAngle(m_x,m_y,autoModeTarget_X,autoModeTarget_Y,m_fi);
 
-			//    std::cout << "Distance to target: " << distanceToTarget << std::endl;
-			//    std::cout << "Angle to target: " << angleToTarget << std::endl;
-
-				if (doISeeTheTarget(copyOfLaserData,angleToTarget,distanceToTarget))
+			if (doISeeTheTarget(copyOfLaserData,angleToTarget,distanceToTarget))
+			{
+				if(!finalTransportStarted)
 				{
-					if(!finalTransportStarted)
-					{
-						std::cout << "target visible at: " << angleToTarget << std::endl;
-						finalTransportStarted = true;
-						doFinalTransport();
-					}
+					std::cout << "target visible at: " << angleToTarget << std::endl;
+					finalTransportStarted = true;
+					doFinalTransport();
 				}
-				else
+			}
+			else
+			{
+				if(checkCorners)
 				{
-					if(checkCorners)
+					checkCorners = false;
+					analyseCorners(copyOfLaserData, m_x,m_y);
+					if(cornersAvailable > 0)
 					{
-						checkCorners = false;
-						analyseCorners(copyOfLaserData, m_x,m_y);
-						if(cornersAvailable > 0)
-						{
-							m_xTarget = obstacleCorners[0].cornerPos.x();
-							m_yTarget = obstacleCorners[0].cornerPos.y();
-							std::cout << "Aproaching corner:" << m_xTarget << ", " << m_yTarget << std::endl;
-							_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
-						}
+						findCornerWithShortestPath();
+						m_xTarget = cornerWithShortestPath.cornerPos.x();
+						m_yTarget = cornerWithShortestPath.cornerPos.y();
+						std::cout << "Aproaching corner:" << m_xTarget << ", " << m_yTarget << std::endl;
+						_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
 					}
 				}
 			}
+		}
+	}
+
+}
+
+void MainWindow::findCornerWithShortestPath() {
+	int shortestIndex = -1;
+	double shortestPathLen = std::numeric_limits<double>::max();
+
+	for (int i = 0; i < cornersAvailable; ++i) {
+		if (obstacleCorners[i].totalPathLen < shortestPathLen) {
+			shortestPathLen = obstacleCorners[i].totalPathLen;
+			shortestIndex = i;
+		}
+	}
+
+	if (shortestIndex != -1) {
+		cornerWithShortestPath = obstacleCorners[shortestIndex];
+	} else {
+		std::cout << "No obstacleCorner found." << std::endl;
 	}
 
 }
