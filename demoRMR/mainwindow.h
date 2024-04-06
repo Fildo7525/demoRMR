@@ -24,10 +24,13 @@
 
 #define TILE_SIZE 13.
 #define MAX_OBSTACLE_CORNERS 10
+#define CORNER_APPROACH_GAP 0.35
 #define DISTANCE_PER_DT_STEADY_THRESHOLD 0.0001
 
 struct obstacleCorner {
     QPointF cornerPos;
+	QPointF neighbourPoints[3];
+	QPointF cornerApproachPoint;
     double firstPathLen;
     double secondPathLen;
     double totalPathLen;
