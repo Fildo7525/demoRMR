@@ -1,14 +1,11 @@
 #pragma once
 
-#include <optional>
 #include <memory>
 
 #include <QObject>
 #include <QPoint>
 #include <QString>
 #include <QVector>
-
-// TODO: create link to Cfree space in the map.
 
 class FloodPlanner
 	: public QObject

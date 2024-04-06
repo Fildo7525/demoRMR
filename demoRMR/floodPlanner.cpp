@@ -1,11 +1,12 @@
 #include "floodPlanner.h"
 #include "mainwindow.h"
 
-#include <QFile>
-#include <QDebug>
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
+
+#include <QFile>
+#include <QDebug>
 
 #define START_FLAG -5
 #define END_FLAG -6
