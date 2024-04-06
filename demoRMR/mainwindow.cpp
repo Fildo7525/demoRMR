@@ -684,33 +684,35 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 
 			double angleToCornerRad = angleToCorner_deg * M_PI / 180.0;
 			angleToCornerRad = angleToCornerRad - (m_fi - M_PI/2.0);
+			if (angleToCornerRad > (M_PI * 2.0) )
+				angleToCornerRad = angleToCornerRad - (M_PI * 2.0);
 			double x_neighbour_diff = abs( thisObstacleCorner.neighbourPoints[0].x() - thisObstacleCorner.neighbourPoints[1].x() - thisObstacleCorner.neighbourPoints[2].x() );
 			double y_neighbour_diff = abs( thisObstacleCorner.neighbourPoints[0].y() - thisObstacleCorner.neighbourPoints[1].y() - thisObstacleCorner.neighbourPoints[2].y() );
 
-			if(!thisObstacleCorner.direction) // right
+			if(thisObstacleCorner.direction) // right
 			{
 				// horizontal wall above robot
 				if(x_neighbour_diff > y_neighbour_diff && (angleToCornerRad > (M_PI*1.5) || angleToCornerRad < (M_PI*0.5)) )
 				{
 					thisObstacleCorner.cornerApproachPoint.setX(thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
-					thisObstacleCorner.cornerApproachPoint.setY(thisObstacleCorner.cornerPos.y() );
+					thisObstacleCorner.cornerApproachPoint.setY(thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
 				}
 				// horizontal wall under robot
 				else if(x_neighbour_diff > y_neighbour_diff && angleToCornerRad < (M_PI*1.5) && angleToCornerRad > (M_PI*0.5))
 				{
 					thisObstacleCorner.cornerApproachPoint.setX(thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
-					thisObstacleCorner.cornerApproachPoint.setY(thisObstacleCorner.cornerPos.y() );
+					thisObstacleCorner.cornerApproachPoint.setY(thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
 				}
 				// vertical wall left of the robot
 				else if(x_neighbour_diff < y_neighbour_diff && angleToCornerRad > M_PI)
 				{
-					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() );
+					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
 					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
 				}
 				// vertical wall right of the robot
 				else if(x_neighbour_diff < y_neighbour_diff && angleToCornerRad < M_PI)
 				{
-					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() );
+					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
 					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
 				}
 				else
@@ -724,24 +726,24 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 				if(x_neighbour_diff > y_neighbour_diff && (angleToCornerRad > (M_PI*1.5) || angleToCornerRad < (M_PI*0.5)) )
 				{
 					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
-					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() );
+					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
 				}
 				// horizontal wall under robot
 				else if(x_neighbour_diff > y_neighbour_diff && angleToCornerRad < (M_PI*1.5) && angleToCornerRad > (M_PI*0.5))
 				{
 					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
-					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() );
+					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
 				}
 				// vertical wall left of the robot
 				else if(x_neighbour_diff < y_neighbour_diff && angleToCornerRad > M_PI)
 				{
-					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() );
+					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
 					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
 				}
 				// vertical wall right of the robot
 				else if(x_neighbour_diff < y_neighbour_diff && angleToCornerRad < M_PI)
 				{
-					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() );
+					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
 					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
 				}
 				else
@@ -754,21 +756,15 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
             thisObstacleCorner.secondPathLen = computeDistance(thisObstacleCorner.cornerPos.x(), thisObstacleCorner.cornerPos.y(), autoModeTarget_X,autoModeTarget_Y);
             thisObstacleCorner.totalPathLen =  thisObstacleCorner.firstPathLen + thisObstacleCorner.secondPathLen;
 
-			if(0)
+			if(1)
             {
                 std::cout << "Corner at angle: " << laserDataDiff.Data[i].scanAngle;
                 std::cout << "at pos: (" << thisObstacleCorner.cornerPos.x() << ", " << thisObstacleCorner.cornerPos.y() << ")";
                 std::cout << "at dir: " << thisObstacleCorner.direction;
                 std::cout << "first path: " << thisObstacleCorner.firstPathLen;
                 std::cout << "second path: " <<  thisObstacleCorner.secondPathLen;
-                std::cout << "sum: " <<   thisObstacleCorner.totalPathLen << std::endl;
-				std::cout << laserData.Data[i-3].scanDistance << std::endl;
-				std::cout << laserData.Data[i-2].scanDistance << std::endl;
-				std::cout << laserData.Data[i-1].scanDistance << std::endl;
-				std::cout << laserData.Data[i].scanDistance << std::endl;
-				std::cout << laserData.Data[i+1].scanDistance << std::endl;
-				std::cout << laserData.Data[i+2].scanDistance << std::endl;
-				std::cout << laserData.Data[i+3].scanDistance << std::endl;
+				std::cout << "sum: " <<   thisObstacleCorner.totalPathLen;
+				std::cout << "app point: (" << thisObstacleCorner.cornerApproachPoint.x() << ", " << thisObstacleCorner.cornerApproachPoint.y() << ")" << std::endl;
             }
 
             obstacleCorners[cornersAvailable] = thisObstacleCorner;
@@ -786,6 +782,8 @@ QPointF MainWindow::computeTargetPosition(double actual_X, double actual_Y, doub
     // Convert the angle to radians
     double angleRad = angleToTarget_deg * M_PI / 180.0;
     angleRad = angleRad - (m_fi - M_PI/2.0);
+	if(angleRad > (2.0 * M_PI) )
+		angleRad = angleRad - (2.0 * M_PI);
 
     // Compute the target position using trigonometry
     double target_X = actual_X + distanceToTarget * sin(angleRad);
