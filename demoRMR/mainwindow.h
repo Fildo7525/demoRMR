@@ -24,6 +24,7 @@
 
 #define TILE_SIZE 13.
 #define MAX_OBSTACLE_CORNERS 10
+#define DISTANCE_PER_DT_STEADY_THRESHOLD 0.0001
 
 struct obstacleCorner {
     QPointF cornerPos;
@@ -180,6 +181,7 @@ private:
 	obstacleCorner cornerWithShortestPath;
     int cornersAvailable;
     bool checkCorners;
+	double distancePerDT;
 };
 
 #endif // MAINWINDOW_H

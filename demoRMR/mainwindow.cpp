@@ -265,6 +265,7 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 			m_robotStartupLocation = true;
 		}
 	}
+	distancePerDT = l;
 }
 
 static QVector<QPointF> generateSequence(const QPointF &min, const QPointF &max, const QPointF &line)
@@ -594,10 +595,10 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 {
 	while(1)
 	{
-		if (m_isInAutoMode)
+		std::cout << (distancePerDT < DISTANCE_PER_DT_STEADY_THRESHOLD) << std::endl;
+		if (m_isInAutoMode && distancePerDT < DISTANCE_PER_DT_STEADY_THRESHOLD) // analyse stuff only when robot is steady
 		{
 			double distanceToTarget = computeDistance(m_x,m_y,autoModeTarget_X,autoModeTarget_Y);
-
 			double angleToTarget =  computeAngle(m_x,m_y,autoModeTarget_X,autoModeTarget_Y,m_fi);
 
 			if (doISeeTheTarget(copyOfLaserData,angleToTarget,distanceToTarget))
