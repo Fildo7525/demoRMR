@@ -24,14 +24,14 @@ FloodPlanner::FloodPlanner(const QString &filename)
 
 QPoint FloodPlanner::toMapCoord(const QPointF &point)
 {
-	auto tmp =  QPointF(point.x(), -point.y()) * 1000. / 20. / TILE_SIZE + QPoint(m_map->at(0).size() / 4., m_map->size() / 2.);
+	auto tmp =  QPointF(point.x(), -point.y()) * 1000. / TILE_SIZE + QPoint(m_map->at(0).size() / 4., m_map->size() / 2.);
 	return tmp.toPoint();
 }
 
 QPointF FloodPlanner::toWorlCoord(const QPoint &point)
 {
-	return QPointF(((point.x() - m_map->at(0).size() / 4.) * TILE_SIZE + TILE_SIZE / 2.) * 20. / 1000.,
-				   (-(point.y() - m_map->size() / 2.) * TILE_SIZE - TILE_SIZE / 2.) * 20. / 1000.);
+	return QPointF(((point.x() - m_map->at(0).size() / 4.) * TILE_SIZE + TILE_SIZE / 2.) / 1000.,
+				   (-(point.y() - m_map->size() / 2.) * TILE_SIZE - TILE_SIZE / 2.) / 1000.);
 }
 
 void FloodPlanner::loadMap(const QString &filename)
