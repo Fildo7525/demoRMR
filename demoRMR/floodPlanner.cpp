@@ -1,5 +1,6 @@
 #include "floodPlanner.h"
 #include "mainwindow.h"
+#include "robotTrajectoryController.h"
 
 #include <algorithm>
 #include <iostream>
@@ -7,6 +8,7 @@
 
 #include <QFile>
 #include <QDebug>
+#include <QSet>
 
 #define START_FLAG -5
 #define END_FLAG -6
@@ -52,7 +54,7 @@ void FloodPlanner::on_requestPath_plan(const QPointF &start, const QPointF &end)
 
 	if (!isTileValid(*m_map, e)) {
 		qDebug() << "Invalid start or end point";
-		printMapWithPath ({s, e});
+		printMapWithPath(QVector<QPoint>{s, e});
 		return;
 	}
 
@@ -205,7 +207,7 @@ QVector<QPointF> FloodPlanner::planPath(const QPoint &start, const QPoint &end, 
 	auto e = nearestCFreePoint(end, type);
 
 	std::cout << "Cfree:\n";
-	printMapWithPath({s, e});
+	printMapWithPath(QVector<QPoint>{s, e});
 
 	markTiles(map, e, s, type);
 
@@ -299,15 +301,86 @@ QVector<QPointF> FloodPlanner::prunePath(const QVector<QPoint> &path)
 	}
 	output.remove(0);
 
-	qDebug() << "Points: " << output;
-
-	std::cout << "Pruned:\n";
 	printMapWithPath(output);
+	qDebug() << "Points: " << output;
 
 	QVector<QPointF> outputF;
 	std::transform(output.begin(), output.end(), std::back_inserter(outputF), [this](const QPoint &p) { return toWorlCoord(p); });
 
+	outputF = removeUnnecessaryPoints(outputF);
+	qDebug() << "After pruning: " << outputF;
+
+	std::cout << "Pruned:\n";
+	printMapWithPath(outputF);
+
 	return outputF;
+}
+
+QVector<QPoint> FloodPlanner::generatePoints(const QPointF &start, const QPointF &end, uint samples)
+{
+	QVector<QPoint> points;
+
+	double step = (end - start).x() / samples;
+	if (step == 0) {
+		return QVector<QPoint>{ toMapCoord(end) };
+	}
+	else if (std::abs(step) < 0.1) {
+		step = (end - start).x() / 2.;
+	}
+
+	QPointF line = computeLineParameters(start, end);
+	QPointF mid = start;
+	qDebug() << "start: " << start << " end: " << end << " line: " << line;
+	qDebug() << "start: " << toMapCoord(start) << " end: " << toMapCoord(end) << " line: " << line;
+
+	while (mid != end) {
+		points.push_back(toMapCoord(mid));
+		qDebug() << "mid: " << mid;
+		mid = {mid.x() + step, line.x() * (mid.x()+step) + line.y()};
+	}
+
+	points.push_back(toMapCoord(end));
+	points = points.toList().toSet().toList().toVector();
+	qDebug() << "Returning path: " << points;
+	return points;
+}
+
+QVector<QPointF> FloodPlanner::removeUnnecessaryPoints(const QVector<QPointF> &path)
+{
+	uint samples = 10;
+	auto curr = path.begin();
+	auto next = curr + 2;
+	QVector<QPointF> output;
+
+	while (next != path.end()) {
+		output.push_back(*curr);
+		QVector<QPoint> midPoints = generatePoints(*curr, *next, samples);
+
+		bool inCollision = false;
+		for (size_t i = 0; i < midPoints.size(); i++) {
+			auto &tmp = midPoints[i];
+			if (!isInCFree(tmp)) {
+				inCollision = true;
+				break;
+			}
+		}
+
+		if (inCollision) {
+			curr = next - 1;
+			next = curr + 2;
+			continue;
+		}
+		else {
+			// Just so that there are no duplicate points.
+			next++;
+			if (next != path.end()) {
+				output.pop_back();
+			}
+		}
+	}
+	output.push_back(path.back());
+
+	return output;
 }
 
 QPair<QVector<int>, QVector<int>> FloodPlanner::getDirections(TrajectoryType type)
@@ -335,6 +408,17 @@ void FloodPlanner::printMapWithPath(const QVector<QPoint> &points)
 	Map map = *m_map;
 	for (const auto &p : points) {
 		map[p.y()][p.x()] = START_FLAG;
+	}
+
+	std::cout << map << std::endl;
+}
+
+void FloodPlanner::printMapWithPath(const QVector<QPointF> &points)
+{
+	Map map = *m_map;
+	for (const auto &p : points) {
+		auto tmp = toMapCoord(p);
+		map[tmp.y()][tmp.x()] = START_FLAG;
 	}
 
 	std::cout << map << std::endl;

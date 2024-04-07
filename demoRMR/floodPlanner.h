@@ -49,9 +49,13 @@ private:
 	QVector<QPoint> pathFromMap(Map &map, const QPoint &start, const QPoint &end, TrajectoryType type);
 	QVector<QPointF> prunePath(const QVector<QPoint> &path);
 
+	QVector<QPoint> generatePoints(const QPointF &start, const QPointF &end, uint samples);
+	QVector<QPointF> removeUnnecessaryPoints(const QVector<QPointF> &path);
+
 	QPair<QVector<int>, QVector<int>> getDirections(TrajectoryType type);
 
 	void printMapWithPath(const QVector<QPoint> &points);
+	void printMapWithPath(const QVector<QPointF> &points);
 
 private:
 	std::shared_ptr<Map> m_map;
