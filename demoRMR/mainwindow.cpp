@@ -756,7 +756,7 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
             thisObstacleCorner.secondPathLen = computeDistance(thisObstacleCorner.cornerPos.x(), thisObstacleCorner.cornerPos.y(), autoModeTarget_X,autoModeTarget_Y);
             thisObstacleCorner.totalPathLen =  thisObstacleCorner.firstPathLen + thisObstacleCorner.secondPathLen;
 
-			if(1)
+			if(0)
             {
                 std::cout << "Corner at angle: " << laserDataDiff.Data[i].scanAngle;
                 std::cout << "at pos: (" << thisObstacleCorner.cornerPos.x() << ", " << thisObstacleCorner.cornerPos.y() << ")";
@@ -845,11 +845,10 @@ double  MainWindow::computeAngle(double x1, double y1, double x2, double y2, dou
 
     // Compute the angle in radians using atan2
     double angle_rad = atan2(deltaY, deltaX);
+	angle_rad = angle_rad - (actual_Fi - M_PI/2.0);
 
     // Convert radians to degrees
     double angle_deg = angle_rad * 180.0 / PI;
-
-    angle_deg = angle_deg + (-1)*(actual_Fi * 180.0 / PI);
 
     // Ensure angle is in the range [0, 360)
     if (angle_deg < 0)
