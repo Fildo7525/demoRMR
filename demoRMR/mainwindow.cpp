@@ -43,6 +43,7 @@ MainWindow::MainWindow(QWidget *parent)
     , autoModeInit_Y(0)
     , finalTransportStarted(false)
     , m_robotStartupLocation(false)
+	, visitedCornersCount(0)
 {
 	qDebug() << "MainWindow starting";
 	//tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
@@ -635,7 +636,7 @@ void MainWindow::findCornerWithShortestPath() {
 	double shortestPathLen = std::numeric_limits<double>::max();
 
 	for (int i = 0; i < cornersAvailable; ++i) {
-		if (obstacleCorners[i].totalPathLen < shortestPathLen) {
+		if (obstacleCorners[i].totalPathLen < shortestPathLen && !wasCornerVisited(obstacleCorners[i]) ) {
 			shortestPathLen = obstacleCorners[i].totalPathLen;
 			shortestIndex = i;
 		}
@@ -647,6 +648,21 @@ void MainWindow::findCornerWithShortestPath() {
 		std::cout << "No obstacleCorner found." << std::endl;
 	}
 
+}
+
+bool MainWindow::wasCornerVisited(obstacleCorner thisCorner) {
+	if(visitedCornersCount == 0){
+		std::cout << "First corner to visit" << std::endl;
+		return false;
+	}
+	else{
+		for(int i = 0; i < visitedCornersCount; i++){
+			if( abs(computeDistancePoints(thisCorner.cornerPos, visitedCorners[i].cornerPos)) < CORNER_VISITED_TOLERANCE ){
+				return true;
+			}
+		}
+		return false;
+	}
 }
 
 void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, double actual_Y) {
@@ -837,6 +853,12 @@ double MainWindow::computeDistance(double x1, double y1, double x2, double y2) {
     double deltaX = x2 - x1;
     double deltaY = y2 - y1;
     return sqrt(deltaX * deltaX + deltaY * deltaY);
+}
+
+double MainWindow::computeDistancePoints(QPointF A, QPointF B) {
+	double deltaX = A.x() - B.x();
+	double deltaY = A.y() - B.y();
+	return sqrt(deltaX * deltaX + deltaY * deltaY);
 }
 
 double  MainWindow::computeAngle(double x1, double y1, double x2, double y2, double actual_Fi) {

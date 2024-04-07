@@ -24,8 +24,10 @@
 
 #define TILE_SIZE 13.
 #define MAX_OBSTACLE_CORNERS 10
+#define MAX_VISITED_CORNERS 25
 #define CORNER_APPROACH_GAP 0.5
 #define DISTANCE_PER_DT_STEADY_THRESHOLD 0.0001
+#define CORNER_VISITED_TOLERANCE 0.2
 
 struct obstacleCorner {
     QPointF cornerPos;
@@ -106,6 +108,8 @@ private slots:
     void doFinalTransport();
     void analyseCorners(LaserMeasurement& laserData, double actual_X, double actual_Y);
 	void findCornerWithShortestPath();
+	bool wasCornerVisited(obstacleCorner thisCorner);
+	double computeDistancePoints(QPointF A, QPointF B);
 
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);
@@ -182,6 +186,8 @@ private:
     LaserMeasurement laserDataDiff;
     obstacleCorner obstacleCorners[MAX_OBSTACLE_CORNERS];
 	obstacleCorner cornerWithShortestPath;
+	obstacleCorner visitedCorners[MAX_VISITED_CORNERS];
+	int visitedCornersCount;
     int cornersAvailable;
     bool checkCorners;
 	double distancePerDT;
