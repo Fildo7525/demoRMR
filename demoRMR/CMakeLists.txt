@@ -15,6 +15,7 @@ find_package(SDL REQUIRED)
 
 add_subdirectory(robot)
 add_subdirectory(QJoysticks-master)
+add_definitions(-DMAP_PATH="${CMAKE_CURRENT_SOURCE_DIR}/map.txt")
 
 set(HEADERS
 	mainwindow.h
