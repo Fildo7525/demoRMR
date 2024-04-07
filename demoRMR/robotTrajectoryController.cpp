@@ -388,7 +388,7 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 		double x = robotX + distance * std::sin(scanAngle + robotAngle);
 		double y = robotY + distance * std::cos(scanAngle + robotAngle);
 
-		points.append(QPointF(x, y));
+		points.append(QPointF(x, y) / 20);
 
 		x /= TILE_SIZE;
 		y /= TILE_SIZE;
