@@ -218,7 +218,10 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 	}
 
 	static auto limit = [] (double &speed, const double target, double rate) {
-		if (speed + rate > target) {
+		if (speed > 0 && target < 0) {
+			speed += rate;
+		}
+		else if (std::abs(speed + rate) > std::abs(target)) {
 			speed = target;
 		}
 		else {
