@@ -629,7 +629,7 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 						findCornerWithShortestPath();
 						m_xTarget = cornerWithShortestPath.cornerApproachPoint.x();
 						m_yTarget = cornerWithShortestPath.cornerApproachPoint.y();
-						std::cout << "Aproaching corner:" << m_xTarget << ", " << m_yTarget << std::endl;
+						std::cout << "Aproaching corner:" << cornerWithShortestPath.cornerPos.x() << ", " << cornerWithShortestPath.cornerPos.y() << std::endl;
 						_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
 						timerStarted = false;
 						emit startCheckCornersTimer();
@@ -666,7 +666,7 @@ void MainWindow::findCornerWithShortestPath() {
 	double shortestPathLen = std::numeric_limits<double>::max();
 
 	for (int i = 0; i < cornersAvailable; ++i) {
-		if (obstacleCorners[i].totalPathLen < shortestPathLen && !wasCornerVisited(obstacleCorners[i]) ) {
+		if (obstacleCorners[i].totalPathLen < shortestPathLen && !wasCornerVisited(obstacleCorners[i]) && obstacleCorners[i].firstPathLen > 0.0 && obstacleCorners[i].secondPathLen > 0.0) {
 			shortestPathLen = obstacleCorners[i].totalPathLen;
 			shortestIndex = i;
 		}
@@ -704,7 +704,11 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
         laserDataDiff.Data[i].scanDistance = laserData.Data[i+1].scanDistance - laserData.Data[i].scanDistance;
         laserDataDiff.Data[i].scanAngle = laserData.Data[i].scanAngle;
 
-        if(abs(laserDataDiff.Data[i].scanDistance/1000.0) > 0.5 )
+		if(abs(laserDataDiff.Data[i].scanDistance/1000.0) > LASER_DIFF_CORNER_THRESHOLD &&
+			abs(laserDataDiff.Data[i-1].scanDistance/1000.0) < LASER_DIFF_CORNER_THRESHOLD &&
+			abs(laserDataDiff.Data[i+1].scanDistance/1000.0) < LASER_DIFF_CORNER_THRESHOLD &&
+			(laserData.Data[i+1].scanDistance/1000.0 < MAX_CORNER_DISTANCE ||
+			laserData.Data[i].scanDistance/1000.0 < MAX_CORNER_DISTANCE)	)
         {
 
             obstacleCorner thisObstacleCorner;
@@ -802,7 +806,7 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
             thisObstacleCorner.secondPathLen = computeDistance(thisObstacleCorner.cornerPos.x(), thisObstacleCorner.cornerPos.y(), autoModeTarget_X,autoModeTarget_Y);
             thisObstacleCorner.totalPathLen =  thisObstacleCorner.firstPathLen + thisObstacleCorner.secondPathLen;
 
-			if(0)
+			if(1)
             {
                 std::cout << "Corner at angle: " << laserDataDiff.Data[i].scanAngle;
                 std::cout << "at pos: (" << thisObstacleCorner.cornerPos.x() << ", " << thisObstacleCorner.cornerPos.y() << ")";
