@@ -26,7 +26,7 @@
 #define MAX_OBSTACLE_CORNERS 10
 #define MAX_VISITED_CORNERS 25
 #define CORNER_APPROACH_GAP 0.5
-#define DISTANCE_PER_DT_STEADY_THRESHOLD 0.0001
+#define DISTANCE_PER_DT_STEADY_THRESHOLD 0.00003
 #define CORNER_VISITED_TOLERANCE 0.2
 
 struct obstacleCorner {
@@ -110,6 +110,8 @@ private slots:
 	void findCornerWithShortestPath();
 	bool wasCornerVisited(obstacleCorner thisCorner);
 	double computeDistancePoints(QPointF A, QPointF B);
+	void doCheckCorners();
+	void onStartCheckCornersTimer();
 
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);
@@ -125,6 +127,7 @@ signals:
 	void changeRotation(double rotation);
 
 	void requestPath(const QPoint &start, const QPoint &end);
+	void startCheckCornersTimer();
 
 public:
 signals:
@@ -191,6 +194,9 @@ private:
     int cornersAvailable;
     bool checkCorners;
 	double distancePerDT;
+	QTimer *checkCornersTimer;
+	bool timerStarted;
+	bool isInitialCornerCheck;
 };
 
 #endif // MAINWINDOW_H

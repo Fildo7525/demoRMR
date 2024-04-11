@@ -44,6 +44,8 @@ MainWindow::MainWindow(QWidget *parent)
     , finalTransportStarted(false)
     , m_robotStartupLocation(false)
 	, visitedCornersCount(0)
+	, timerStarted(false)
+	, isInitialCornerCheck(true)
 {
 	qDebug() << "MainWindow starting";
 	//tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
@@ -60,6 +62,9 @@ MainWindow::MainWindow(QWidget *parent)
 	}
 
 	datacounter = 0;
+
+
+	checkCornersTimer = new QTimer(this);
 	//  timer = new QTimer(this);
 	//	connect(timer, SIGNAL(timeout()), this, SLOT(getNewFrame()));
 	actIndex = -1;
@@ -88,6 +93,9 @@ MainWindow::MainWindow(QWidget *parent)
 	QObject::connect(obstacleAvoidanceThread, &QThread::started, [this]() {
 		this->obstacleAvoidanceTrajectoryHandle();
 	});
+
+	connect(checkCornersTimer, &QTimer::timeout, this, &MainWindow::doCheckCorners);
+	connect(this, &MainWindow::startCheckCornersTimer, this, &MainWindow::onStartCheckCornersTimer);
 
 	// Starting threads
 	m_controllerThread->start();
@@ -266,7 +274,7 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 			m_robotStartupLocation = true;
 		}
 	}
-	distancePerDT = l;
+	distancePerDT = abs(rightEncDist) + abs(leftEncDist);
 }
 
 static QVector<QPointF> generateSequence(const QPointF &min, const QPointF &max, const QPointF &line)
@@ -623,12 +631,34 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 						m_yTarget = cornerWithShortestPath.cornerApproachPoint.y();
 						std::cout << "Aproaching corner:" << m_xTarget << ", " << m_yTarget << std::endl;
 						_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
+						timerStarted = false;
+						emit startCheckCornersTimer();
+
 					}
 				}
 			}
 		}
 	}
 
+}
+
+void MainWindow::onStartCheckCornersTimer() {
+	// Start the timer
+	checkCornersTimer->start(3000);
+}
+
+void MainWindow::doCheckCorners() {
+	if (!timerStarted){
+		std::cout << "Check corner to be done at next stop." << std::endl;
+		if(isInitialCornerCheck){
+			isInitialCornerCheck = false;
+		}
+		else{
+			visitedCornersCount++;
+		}
+		checkCorners = true;
+		timerStarted = true;
+	}
 }
 
 void MainWindow::findCornerWithShortestPath() {
