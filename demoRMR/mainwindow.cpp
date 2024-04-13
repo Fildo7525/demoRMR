@@ -666,7 +666,7 @@ void MainWindow::findCornerWithShortestPath() {
 	double shortestPathLen = std::numeric_limits<double>::max();
 
 	for (int i = 0; i < cornersAvailable; ++i) {
-		if (obstacleCorners[i].totalPathLen < shortestPathLen && !wasCornerVisited(obstacleCorners[i]) && obstacleCorners[i].firstPathLen > 0.0 && obstacleCorners[i].secondPathLen > 0.0) {
+		if (obstacleCorners[i].totalPathLen < shortestPathLen && !wasCornerVisited(obstacleCorners[i])) {
 			shortestPathLen = obstacleCorners[i].totalPathLen;
 			shortestIndex = i;
 		}
@@ -805,6 +805,10 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
             thisObstacleCorner.firstPathLen = computeDistance(actual_X, actual_Y, thisObstacleCorner.cornerPos.x(), thisObstacleCorner.cornerPos.y());
             thisObstacleCorner.secondPathLen = computeDistance(thisObstacleCorner.cornerPos.x(), thisObstacleCorner.cornerPos.y(), autoModeTarget_X,autoModeTarget_Y);
             thisObstacleCorner.totalPathLen =  thisObstacleCorner.firstPathLen + thisObstacleCorner.secondPathLen;
+
+			if(thisObstacleCorner.firstPathLen == 0.0 || thisObstacleCorner.secondPathLen == 0.0){
+				continue;
+			}
 
 			if(1)
             {
