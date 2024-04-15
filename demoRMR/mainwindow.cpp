@@ -46,6 +46,7 @@ MainWindow::MainWindow(QWidget *parent)
 	, visitedCornersCount(0)
 	, timerStarted(false)
 	, isInitialCornerCheck(true)
+	, checkingColision(false)
 {
 	qDebug() << "MainWindow starting";
 	//tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
@@ -433,26 +434,31 @@ void MainWindow::on_pushButton_2_clicked() //forward
 {
 	//pohyb dopredu
 	emit moveForward(500);
+	obstacleAvoidanceAbort();
 }
 
 void MainWindow::on_pushButton_3_clicked() //back
 {
 	emit moveForward(-250);
+	obstacleAvoidanceAbort();
 }
 
 void MainWindow::on_pushButton_6_clicked() //left
 {
 	emit changeRotation(3.14159 / 2);
+	obstacleAvoidanceAbort();
 }
 
 void MainWindow::on_pushButton_5_clicked() //right
 {
 	emit changeRotation(-3.14159 / 2);
+	obstacleAvoidanceAbort();
 }
 
 void MainWindow::on_pushButton_4_clicked() //stop
 {
 	emit moveForward(0);
+	obstacleAvoidanceAbort();
 }
 
 void MainWindow::on_pushButton_clicked()
@@ -586,6 +592,19 @@ void MainWindow::onLiveAvoidObstaclesButton_clicked(bool clicked)
     }
 }
 
+void MainWindow::obstacleAvoidanceAbort(){
+	m_isInAutoMode = false;
+	autoModeTarget_X=0;
+	autoModeTarget_Y=0;
+	autoModeInit_X=0;
+	autoModeInit_Y=0;
+	finalTransportStarted=false;
+	visitedCornersCount=0;
+	timerStarted=false;
+	isInitialCornerCheck=true;
+	checkingColision=false;
+}
+
 void MainWindow::obstacleAvoidanceTrajectoryInit(double X_target, double Y_target, double actual_X, double actual_Y, double actual_Fi)
 {
     autoModeTarget_X = X_target;
@@ -604,6 +623,9 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 {
 	while(1)
 	{
+		if(m_isInAutoMode && checkingColision){
+			checkColision();
+		}
 		if (m_isInAutoMode && distancePerDT < DISTANCE_PER_DT_STEADY_THRESHOLD) // analyse stuff only when robot is steady
 		{
 			double distanceToTarget = computeDistance(m_x,m_y,autoModeTarget_X,autoModeTarget_Y);
@@ -642,14 +664,33 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 
 }
 
+void MainWindow::checkColision() {
+	int count = 0;
+	for (size_t i = 0; i < copyOfLaserData.numberOfScans; ++i){
+		if((copyOfLaserData.Data[i].scanDistance / 1000.0) < COLISION_THRESHOLD){
+			count++;
+			if(count > 3){
+				std::cout << "Too close, stopped." << std::endl;
+				emit moveForward(0);
+				checkingColision = false;
+				checkCorners = true;
+				return;
+			}
+		}
+	}
+}
+
 void MainWindow::onStartCheckCornersTimer() {
 	// Start the timer
-	checkCornersTimer->start(3000);
+	if(m_isInAutoMode){
+		checkCornersTimer->start(3000);
+	}
 }
 
 void MainWindow::doCheckCorners() {
-	if (!timerStarted){
+	if (!timerStarted && m_isInAutoMode){
 		std::cout << "Check corner to be done at next stop." << std::endl;
+		checkingColision = true;
 		if(isInitialCornerCheck){
 			isInitialCornerCheck = false;
 		}
@@ -810,7 +851,7 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 				continue;
 			}
 
-			if(1)
+			if(0)
             {
                 std::cout << "Corner at angle: " << laserDataDiff.Data[i].scanAngle;
                 std::cout << "at pos: (" << thisObstacleCorner.cornerPos.x() << ", " << thisObstacleCorner.cornerPos.y() << ")";
@@ -860,25 +901,29 @@ QPointF MainWindow::computeTargetPosition(double actual_X, double actual_Y, doub
 
 void MainWindow::doFinalTransport()
 {
-
-    std::cout << "Final transport started" << std::endl;
+	emit moveForward(0);
     bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
     bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
+	std::cout << "Final transport started to: X:" << m_xTarget << " Y:" << m_yTarget <<std::endl;
 
     if (ok1 && ok2) {
-        _calculateTrajectory(RobotTrajectoryController::MovementType::Forward);
+		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
     }
     m_isInAutoMode = false;
+	obstacleAvoidanceAbort();
 
 }
 
 bool MainWindow::doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget)
 {
+//	std::cout << distanceToTarget << " " << angleToTarget << std::endl;
     for(int i = 0; i<laserData.numberOfScans; i++)
     {
-        if(laserData.Data[i].scanAngle < angleToTarget+0.1 && laserData.Data[i].scanAngle > angleToTarget-0.1)
+		if(laserData.Data[i].scanAngle < (angleToTarget+0.6) && laserData.Data[i].scanAngle > (angleToTarget-0.6))
         {
-            if((laserData.Data[i].scanDistance/1000.0) > distanceToTarget)
+			if((laserData.Data[i].scanDistance/1000.0) > (distanceToTarget + 0.15) &&
+					(laserData.Data[i-1].scanDistance/1000.0) > (distanceToTarget + 0.15) &&
+					(laserData.Data[i+1].scanDistance/1000.0) > (distanceToTarget + 0.15) )
             {
                 return true;
             }
@@ -905,14 +950,18 @@ double  MainWindow::computeAngle(double x1, double y1, double x2, double y2, dou
 
     // Compute the angle in radians using atan2
     double angle_rad = atan2(deltaY, deltaX);
-	angle_rad = angle_rad - (actual_Fi - M_PI/2.0);
+	angle_rad = angle_rad * (-1);
+	angle_rad = angle_rad + (M_PI/2.0);
 
-    // Convert radians to degrees
-    double angle_deg = angle_rad * 180.0 / PI;
+	actual_Fi = actual_Fi * (-1);
+	actual_Fi = actual_Fi + (M_PI/2.0);
 
-    // Ensure angle is in the range [0, 360)
-    if (angle_deg < 0)
-        angle_deg += 360.0;
+	double angle_deg = angle_rad * 180.0 / PI;
+	double actual_deg = actual_Fi * 180.0 / PI;
 
-    return angle_deg;
+	double result = angle_deg - actual_deg;
+
+//	std::cout << actual_Fi << " " << actual_deg << " " << angle_rad << " " << angle_deg << " " << result << std::endl;
+
+	return result;
 }
