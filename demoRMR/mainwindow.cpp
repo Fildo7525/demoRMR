@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "KalmanFilter.h"
 #include "lidarMapper.h"
 #include "ui_mainwindow.h"
 
@@ -36,7 +37,9 @@ MainWindow::MainWindow(QWidget *parent)
 	, m_controllerThread(new QThread(this))
 	, m_plannerThread(new QThread(this))
 	, m_robotStartupLocation(false)
+	, m_kalmanFilter(new KalmanFilter())
 {
+	m_kalmanFilter->Init();
 	qDebug() << "MainWindow starting";
 	//tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
 	ipaddress = "127.0.0.1"; //192.168.1.12 toto je na niektory realny robot.. na lokal budete davat "127.0.0.1"
@@ -236,10 +239,17 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 	lastRightEncoder = robotdata.EncoderRight;
 
 	double l = (rightEncDist + leftEncDist) / 2.0;
+	double fi = robotdata.GyroAngle / 100. * TO_RADIANS - m_fiCorrection;
+	double x = m_x + l * std::cos(m_fi);
+	double y = m_y + l * std::sin(m_fi);
+
+	m_kalmanFilter->Predict();
+	m_kalmanFilter->Update({x, y, fi});
+
 	{
-		m_fi = robotdata.GyroAngle / 100. * TO_RADIANS - m_fiCorrection;
-		m_x = m_x + l * std::cos(m_fi);
-		m_y = m_y + l * std::sin(m_fi);
+		m_fi = fi;
+		m_x = x;
+		m_y = y;
 
 		if (!m_robotStartupLocation && datacounter % 5) {
 			m_x = 0;
@@ -397,9 +407,6 @@ void MainWindow::on_pushButton_9_clicked() //start button
 
 	///ked je vsetko nasetovane tak to tento prikaz spusti (ak nieco nieje setnute,tak to normalne nenastavi.cize ak napr nechcete kameru,vklude vsetky info o nej vymazte)
 	robot.robotStart();
-
-
-
 }
 
 void MainWindow::on_pushButton_2_clicked() //forward

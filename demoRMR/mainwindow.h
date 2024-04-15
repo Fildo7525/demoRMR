@@ -21,6 +21,7 @@
 #include <opencv2/videoio.hpp>
 #include <sys/types.h>
 #include "lidarMapper.h"
+#include "KalmanFilter.h"
 
 #define TILE_SIZE 280. // 280 mm => 28cm
 
@@ -147,6 +148,8 @@ private:
 
 	bool m_robotStartupLocation;
 	double m_fiCorrection;
+
+	std::shared_ptr<KalmanFilter> m_kalmanFilter;
 };
 
 #endif // MAINWINDOW_H

@@ -12,26 +12,28 @@ set(CMAKE_BUILD_TYPE Debug)
 find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
 find_package(OpenCV REQUIRED)
 find_package(SDL REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 add_subdirectory(robot)
 add_subdirectory(QJoysticks-master)
 add_definitions(-DMAP_PATH="${CMAKE_CURRENT_SOURCE_DIR}/map.txt")
 
 set(HEADERS
+	floodPlanner.h
+	lidarMapper.h
 	mainwindow.h
 	pidcontroller.h
 	robotTrajectoryController.h
-	lidarMapper.h
-	floodPlanner.h
 )
 
 set(SOURCES
+	KalmanFilter.cpp
+	floodPlanner.cpp
+	lidarMapper.cpp
 	main.cpp
 	mainwindow.cpp
 	pidcontroller.cpp
 	robotTrajectoryController.cpp
-	lidarMapper.cpp
-	floodPlanner.cpp
 )
 
 set(UI
@@ -45,6 +47,12 @@ add_executable(rmr
 	${UI}
 )
 
+target_link_directories(
+	rmr
+PUBLIC
+	${Eigen_INCLUDE_DIRS}
+)
+
 target_link_libraries(
 	rmr
 PUBLIC
@@ -53,5 +61,6 @@ PUBLIC
 	${OpenCV_LIBS}
 	robot
 	qjoysticks
+	${Eigen_LIBRARIES}
 )
 
