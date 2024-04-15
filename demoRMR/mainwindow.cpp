@@ -774,35 +774,48 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 			}
 
 			double angleToCornerRad = angleToCorner_deg * M_PI / 180.0;
-			angleToCornerRad = angleToCornerRad - (m_fi - M_PI/2.0);
-			if (angleToCornerRad > (M_PI * 2.0) )
-				angleToCornerRad = angleToCornerRad - (M_PI * 2.0);
-			double x_neighbour_diff = abs( thisObstacleCorner.neighbourPoints[0].x() - thisObstacleCorner.neighbourPoints[1].x() - thisObstacleCorner.neighbourPoints[2].x() );
-			double y_neighbour_diff = abs( thisObstacleCorner.neighbourPoints[0].y() - thisObstacleCorner.neighbourPoints[1].y() - thisObstacleCorner.neighbourPoints[2].y() );
+
+			double actual_Fi = m_fi * (-1);
+			actual_Fi = actual_Fi + (M_PI/2.0);
+			double actual_deg = actual_Fi * 180.0 / PI;
+
+			double resultAngleToCornerDeg =  actual_deg + angleToCorner_deg;
+
+			if(resultAngleToCornerDeg >= 360.0)
+				resultAngleToCornerDeg -= 360.0;
+
+			double x_neighbour_diff = abs(thisObstacleCorner.neighbourPoints[0].x() - thisObstacleCorner.neighbourPoints[1].x()) +
+									  abs(thisObstacleCorner.neighbourPoints[1].x() - thisObstacleCorner.neighbourPoints[2].x()) ;
+			double y_neighbour_diff = abs(thisObstacleCorner.neighbourPoints[0].y() - thisObstacleCorner.neighbourPoints[1].y()) +
+									  abs(thisObstacleCorner.neighbourPoints[1].y() - thisObstacleCorner.neighbourPoints[2].y()) ;
 
 			if(thisObstacleCorner.direction) // right
 			{
 				// horizontal wall above robot
-				if(x_neighbour_diff > y_neighbour_diff && (angleToCornerRad > (M_PI*1.5) || angleToCornerRad < (M_PI*0.5)) )
+				if(x_neighbour_diff > y_neighbour_diff && (resultAngleToCornerDeg > 270.00 || resultAngleToCornerDeg < 90.00) )
 				{
+//					std::cout << "R Ha" << std::endl;
 					thisObstacleCorner.cornerApproachPoint.setX(thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
 					thisObstacleCorner.cornerApproachPoint.setY(thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
 				}
 				// horizontal wall under robot
-				else if(x_neighbour_diff > y_neighbour_diff && angleToCornerRad < (M_PI*1.5) && angleToCornerRad > (M_PI*0.5))
+				else if(x_neighbour_diff > y_neighbour_diff && resultAngleToCornerDeg < 270.00 && resultAngleToCornerDeg > 90.00)
 				{
+//					std::cout << "R Hu" << std::endl;
 					thisObstacleCorner.cornerApproachPoint.setX(thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
 					thisObstacleCorner.cornerApproachPoint.setY(thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
 				}
 				// vertical wall left of the robot
-				else if(x_neighbour_diff < y_neighbour_diff && angleToCornerRad > M_PI)
+				else if(x_neighbour_diff < y_neighbour_diff && resultAngleToCornerDeg > 180.00)
 				{
+//					std::cout << "R Vl" << std::endl;
 					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
 					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
 				}
 				// vertical wall right of the robot
-				else if(x_neighbour_diff < y_neighbour_diff && angleToCornerRad < M_PI)
+				else if(x_neighbour_diff < y_neighbour_diff && resultAngleToCornerDeg < 180.00)
 				{
+//					std::cout << "R Vr" << std::endl;
 					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
 					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
 				}
@@ -814,26 +827,30 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 			else // left
 			{
 				// horizontal wall above robot
-				if(x_neighbour_diff > y_neighbour_diff && (angleToCornerRad > (M_PI*1.5) || angleToCornerRad < (M_PI*0.5)) )
+				if(x_neighbour_diff > y_neighbour_diff && (resultAngleToCornerDeg > 270.00 || resultAngleToCornerDeg < 90.00 ))
 				{
+//					std::cout << "L Ha" << std::endl;
 					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
 					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
 				}
 				// horizontal wall under robot
-				else if(x_neighbour_diff > y_neighbour_diff && angleToCornerRad < (M_PI*1.5) && angleToCornerRad > (M_PI*0.5))
+				else if(x_neighbour_diff > y_neighbour_diff && resultAngleToCornerDeg < 270.00 && resultAngleToCornerDeg > 90.00)
 				{
+//					std::cout << "L Hu" << std::endl;
 					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
 					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
 				}
 				// vertical wall left of the robot
-				else if(x_neighbour_diff < y_neighbour_diff && angleToCornerRad > M_PI)
+				else if(x_neighbour_diff < y_neighbour_diff && resultAngleToCornerDeg > 180.00)
 				{
+//					std::cout << "L Vl" << std::endl;
 					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
 					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
 				}
 				// vertical wall right of the robot
-				else if(x_neighbour_diff < y_neighbour_diff && angleToCornerRad < M_PI)
+				else if(x_neighbour_diff < y_neighbour_diff && resultAngleToCornerDeg < 180.00)
 				{
+//					std::cout << "L Vr" << std::endl;
 					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
 					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
 				}
@@ -851,7 +868,7 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 				continue;
 			}
 
-			if(0)
+			if(1)
             {
                 std::cout << "Corner at angle: " << laserDataDiff.Data[i].scanAngle;
                 std::cout << "at pos: (" << thisObstacleCorner.cornerPos.x() << ", " << thisObstacleCorner.cornerPos.y() << ")";
@@ -884,7 +901,7 @@ QPointF MainWindow::computeTargetPosition(double actual_X, double actual_Y, doub
     double target_X = actual_X + distanceToTarget * sin(angleRad);
     double target_Y = actual_Y + distanceToTarget * cos(angleRad);
 
-    if(0)
+	if(0)
     {
         std::cout << " myX:" << actual_X;
         std::cout << " myY:" << actual_Y;
