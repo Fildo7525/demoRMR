@@ -658,7 +658,7 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 						findCornerWithShortestPath();
 						m_xTarget = cornerWithShortestPath.cornerApproachPoint.x();
 						m_yTarget = cornerWithShortestPath.cornerApproachPoint.y();
-						std::cout << "Aproaching corner:" << cornerWithShortestPath.cornerPos.x() << ", " << cornerWithShortestPath.cornerPos.y() << std::endl;
+						std::cout << "Aproaching corner:" << cornerWithShortestPath.cornerApproachPoint.x() << ", " << cornerWithShortestPath.cornerApproachPoint.y() << std::endl;
 						_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
 						timerStarted = false;
 						emit startCheckCornersTimer();
@@ -674,7 +674,7 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 void MainWindow::checkColision() {
 	int count = 0;
 	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i){
-		if((copyOfLaserData.Data[i].scanDistance / 1000.0) < COLISION_THRESHOLD){
+		if((copyOfLaserData.Data[i].scanDistance / 1000.0) < COLISION_THRESHOLD && (copyOfLaserData.Data[i].scanDistance / 1000.0) > 0.0000001){
 			count++;
 			if(count > 3){
 				std::cout << "Too close, stopped." << std::endl;

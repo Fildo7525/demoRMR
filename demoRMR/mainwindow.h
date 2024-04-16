@@ -30,7 +30,7 @@
 #define CORNER_VISITED_TOLERANCE 0.2
 #define LASER_DIFF_CORNER_THRESHOLD 0.5
 #define MAX_CORNER_DISTANCE 3.0
-#define COLISION_THRESHOLD 0.3
+#define COLISION_THRESHOLD 0.2
 
 struct obstacleCorner {
     QPointF cornerPos;
