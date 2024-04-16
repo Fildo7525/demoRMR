@@ -619,6 +619,13 @@ void MainWindow::obstacleAvoidanceTrajectoryInit(double X_target, double Y_targe
 
 }
 
+
+// Start - [0.50 0.50]
+// Top right - [5.02, 4.21] => [4.52, 3.71]
+// Mid right - [5.22, 2.65] => [4.72, 2.15]
+// Botton right - [5.12, -0.35] => [4.62, -0.85]
+// Bottom left - [1.7, -0.9] => [1.2, -1.4]
+
 void MainWindow::obstacleAvoidanceTrajectoryHandle()
 {
 	while(1)
@@ -666,7 +673,7 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 
 void MainWindow::checkColision() {
 	int count = 0;
-	for (size_t i = 0; i < copyOfLaserData.numberOfScans; ++i){
+	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i){
 		if((copyOfLaserData.Data[i].scanDistance / 1000.0) < COLISION_THRESHOLD){
 			count++;
 			if(count > 3){
@@ -783,6 +790,8 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 
 			if(resultAngleToCornerDeg >= 360.0)
 				resultAngleToCornerDeg -= 360.0;
+			else if(resultAngleToCornerDeg < 0)
+				resultAngleToCornerDeg += 360.0;
 
 			double x_neighbour_diff = abs(thisObstacleCorner.neighbourPoints[0].x() - thisObstacleCorner.neighbourPoints[1].x()) +
 									  abs(thisObstacleCorner.neighbourPoints[1].x() - thisObstacleCorner.neighbourPoints[2].x()) ;
@@ -822,6 +831,7 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 				else
 				{
 					std::cout << "There was a problem with computation of corner approach point!" << std::endl;
+					continue;
 				}
 			}
 			else // left
@@ -857,6 +867,7 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 				else
 				{
 					std::cout << "There was a problem with computation of corner approach point!" << std::endl;
+					continue;
 				}
 			}
 
@@ -864,7 +875,21 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
             thisObstacleCorner.secondPathLen = computeDistance(thisObstacleCorner.cornerPos.x(), thisObstacleCorner.cornerPos.y(), autoModeTarget_X,autoModeTarget_Y);
             thisObstacleCorner.totalPathLen =  thisObstacleCorner.firstPathLen + thisObstacleCorner.secondPathLen;
 
+			thisObstacleCorner.firstPathLenReal = computeDistance(actual_X, actual_Y, thisObstacleCorner.cornerApproachPoint.x(), thisObstacleCorner.cornerApproachPoint.y());
+			thisObstacleCorner.secondPathLenReal = computeDistance(thisObstacleCorner.cornerApproachPoint.x(), thisObstacleCorner.cornerApproachPoint.y(), autoModeTarget_X,autoModeTarget_Y);
+			thisObstacleCorner.totalPathLenReal =  thisObstacleCorner.firstPathLenReal + thisObstacleCorner.secondPathLenReal;
+
 			if(thisObstacleCorner.firstPathLen == 0.0 || thisObstacleCorner.secondPathLen == 0.0){
+				// computation error
+				continue;
+			}
+			if(thisObstacleCorner.totalPathLenReal < 0.3){
+				// too small path
+				continue;
+			}
+			if( (abs(actual_X - thisObstacleCorner.cornerApproachPoint.x()) < 0.12) &&
+				(abs(actual_Y - thisObstacleCorner.cornerApproachPoint.y()) < 0.12) ) {
+				// same point as robot
 				continue;
 			}
 
@@ -876,6 +901,7 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
                 std::cout << "first path: " << thisObstacleCorner.firstPathLen;
                 std::cout << "second path: " <<  thisObstacleCorner.secondPathLen;
 				std::cout << "sum: " <<   thisObstacleCorner.totalPathLen;
+				std::cout << "real path:" << thisObstacleCorner.totalPathLenReal;
 				std::cout << "app point: (" << thisObstacleCorner.cornerApproachPoint.x() << ", " << thisObstacleCorner.cornerApproachPoint.y() << ")" << std::endl;
             }
 
@@ -940,7 +966,9 @@ bool MainWindow::doISeeTheTarget(LaserMeasurement laserData, double angleToTarge
         {
 			if((laserData.Data[i].scanDistance/1000.0) > (distanceToTarget + 0.15) &&
 					(laserData.Data[i-1].scanDistance/1000.0) > (distanceToTarget + 0.15) &&
-					(laserData.Data[i+1].scanDistance/1000.0) > (distanceToTarget + 0.15) )
+					(laserData.Data[i+1].scanDistance/1000.0) > (distanceToTarget + 0.15) &&
+					(laserData.Data[i-2].scanDistance/1000.0) > (distanceToTarget + 0.15) &&
+					(laserData.Data[i+2].scanDistance/1000.0) > (distanceToTarget + 0.15))
             {
                 return true;
             }
