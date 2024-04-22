@@ -1,6 +1,8 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "CKobuki.h"
+#include "ParticleFilter.h"
 #include "floodPlanner.h"
 #include <QMainWindow>
 #include <QTimer>
@@ -210,6 +212,7 @@ private:
 	bool timerStarted;
 	bool isInitialCornerCheck;
 	bool checkingColision;
+	ParticleFilter *m_particleFilter;
 };
 
 #endif // MAINWINDOW_H

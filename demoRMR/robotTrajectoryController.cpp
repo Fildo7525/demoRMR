@@ -153,7 +153,7 @@ void RobotTrajectoryController::moveByArcTo(double distance, double rotation)
 	m_accelerationTimer.stop();
 	m_stoppingTimer.stop();
 
-	m_controller = std::make_shared<PIDController>(1000, 0, 0, distance, -500, 500);
+	m_controller = std::make_shared<PIDController>(1000, 0, 0, distance, -250, 250);
 	m_rotationController = std::make_shared<PIDController>(1, 0, 0, rotation);
 
 	m_positionTimer.start();
@@ -268,6 +268,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		}
 	}
 
+	// qDebug() << "Error: " << error << " Max correction: " << maxCorrection;
 	if (std::abs(error) < maxCorrection || std::abs(finalDistanceError()) < maxCorrection) {
 		if (m_movementType == MovementType::Rotation && !m_arcExpected) {
 			emit requestMovement(localDistanceError());
@@ -344,8 +345,10 @@ void RobotTrajectoryController::handleArcResults(double distance, double rotatio
 {
 	m_points = points;
 
-	m_arcExpected = true;
-	rotateRobotTo(rotation);
+	if (rotation > 0.4 || rotation < -0.4) {
+		m_arcExpected = true;
+		rotateRobotTo(rotation);
+	}
 	return;
 
 
