@@ -20,7 +20,7 @@ class RobotTrajectoryController : public QObject
 public:
 	enum class MovementType { None, Forward, Rotation, Arc };
 
-	QString movementTypeToString(MovementType type)
+	static QString movementTypeToString(MovementType type)
 	{
 		switch (type) {
 		case MovementType::None:
@@ -119,5 +119,6 @@ private:
 };
 
 std::ostream &operator<<(std::ostream &os, const RobotTrajectoryController::Map &map);
+
 
 #endif // ROBOTTRAJECTORYCONTROLLER_H
