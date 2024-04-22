@@ -660,6 +660,7 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 						m_yTarget = cornerWithShortestPath.cornerApproachPoint.y();
 						std::cout << "Aproaching corner:" << cornerWithShortestPath.cornerApproachPoint.x() << ", " << cornerWithShortestPath.cornerApproachPoint.y() << std::endl;
 						_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
+						visitedCorners[visitedCornersCount] = cornerWithShortestPath;
 						timerStarted = false;
 						emit startCheckCornersTimer();
 
@@ -710,6 +711,7 @@ void MainWindow::doCheckCorners() {
 }
 
 void MainWindow::findCornerWithShortestPath() {
+	std::cout << "Attempting to find corner." << std::endl;
 	int shortestIndex = -1;
 	double shortestPathLen = std::numeric_limits<double>::max();
 
@@ -735,7 +737,9 @@ bool MainWindow::wasCornerVisited(obstacleCorner thisCorner) {
 	}
 	else{
 		for(int i = 0; i < visitedCornersCount; i++){
+//			std::cout << abs(computeDistancePoints(thisCorner.cornerPos, visitedCorners[i].cornerPos)) << std::endl;
 			if( abs(computeDistancePoints(thisCorner.cornerPos, visitedCorners[i].cornerPos)) < CORNER_VISITED_TOLERANCE ){
+//				std::cout << "Visited" << std::endl;
 				return true;
 			}
 		}
@@ -755,6 +759,10 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 		if(abs(laserDataDiff.Data[i].scanDistance/1000.0) > LASER_DIFF_CORNER_THRESHOLD &&
 			abs(laserDataDiff.Data[i-1].scanDistance/1000.0) < LASER_DIFF_CORNER_THRESHOLD &&
 			abs(laserDataDiff.Data[i+1].scanDistance/1000.0) < LASER_DIFF_CORNER_THRESHOLD &&
+			abs(laserDataDiff.Data[i-2].scanDistance/1000.0) < LASER_DIFF_CORNER_THRESHOLD &&
+			abs(laserDataDiff.Data[i+2].scanDistance/1000.0) < LASER_DIFF_CORNER_THRESHOLD &&
+			abs(laserDataDiff.Data[i-3].scanDistance/1000.0) < LASER_DIFF_CORNER_THRESHOLD &&
+			abs(laserDataDiff.Data[i+3].scanDistance/1000.0) < LASER_DIFF_CORNER_THRESHOLD &&
 			(laserData.Data[i+1].scanDistance/1000.0 < MAX_CORNER_DISTANCE ||
 			laserData.Data[i].scanDistance/1000.0 < MAX_CORNER_DISTANCE)	)
         {
@@ -893,7 +901,7 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 				continue;
 			}
 
-			if(1)
+			if(0)
             {
                 std::cout << "Corner at angle: " << laserDataDiff.Data[i].scanAngle;
                 std::cout << "at pos: (" << thisObstacleCorner.cornerPos.x() << ", " << thisObstacleCorner.cornerPos.y() << ")";
@@ -911,6 +919,12 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
         }
     }
     std::cout << cornersAvailable << std::endl;
+	if(cornersAvailable == 0){
+		m_xTarget = visitedCorners[visitedCornersCount].cornerApproachPoint.x();
+		m_yTarget = visitedCorners[visitedCornersCount].cornerApproachPoint.y();
+		std::cout << "No more corners - Aproaching last visited corner:" << visitedCorners[visitedCornersCount].cornerApproachPoint.x() << ", " << visitedCorners[visitedCornersCount].cornerApproachPoint.y() << std::endl;
+		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
+	}
 
 }
 
@@ -984,8 +998,8 @@ double MainWindow::computeDistance(double x1, double y1, double x2, double y2) {
 }
 
 double MainWindow::computeDistancePoints(QPointF A, QPointF B) {
-	double deltaX = A.x() - B.x();
-	double deltaY = A.y() - B.y();
+	double deltaX = B.x() - A.x();
+	double deltaY = B.y() - A.y();
 	return sqrt(deltaX * deltaX + deltaY * deltaY);
 }
 
