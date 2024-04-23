@@ -49,10 +49,10 @@ public:
 	void rotateRobotTo(double rotation);
 	void moveForwardBy(double distance);
 	void moveByArcTo(double distance, double rotation);
+	double finalDistanceError();
 
 private:
 	bool isNear(double currentVelocity);
-	double finalDistanceError();
 	double localDistanceError();
 	double finalRotationError();
 	double localRotationError();

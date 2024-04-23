@@ -36,6 +36,7 @@ struct obstacleCorner {
     QPointF cornerPos;
 	QPointF neighbourPoints[3];
 	QPointF cornerApproachPoint;
+	QPointF cornerBypassPoint;
     double firstPathLen;
 	double secondPathLen;
     double totalPathLen;
