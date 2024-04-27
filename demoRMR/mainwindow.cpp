@@ -754,6 +754,8 @@ bool MainWindow::wasCornerVisited(obstacleCorner thisCorner) {
 //			std::cout << abs(computeDistancePoints(thisCorner.cornerPos, visitedCorners[i].cornerPos)) << std::endl;
 			if( abs(computeDistancePoints(thisCorner.cornerApproachPoint, visitedCorners[i].cornerApproachPoint)) < CORNER_VISITED_TOLERANCE ||
 				abs(computeDistancePoints(thisCorner.cornerBypassPoint, visitedCorners[i].cornerBypassPoint)) < CORNER_VISITED_TOLERANCE ||
+				abs(computeDistancePoints(thisCorner.cornerApproachPoint, visitedCorners[i].cornerBypassPoint)) < CORNER_VISITED_TOLERANCE ||
+				abs(computeDistancePoints(thisCorner.cornerBypassPoint, visitedCorners[i].cornerApproachPoint)) < CORNER_VISITED_TOLERANCE ||
 				abs(computeDistancePoints(thisCorner.cornerPos, visitedCorners[i].cornerPos)) < CORNER_VISITED_TOLERANCE){
 //				std::cout << "Visited" << std::endl;
 				return true;
@@ -924,7 +926,7 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 				continue;
 			}
 			if(thisObstacleCorner.totalPathLenReal < 0.3){
-				// too small path
+				// too short path
 				continue;
 			}
 			if( (abs(actual_X - thisObstacleCorner.cornerApproachPoint.x()) < 0.12) &&
@@ -955,10 +957,20 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
     }
     std::cout << cornersAvailable << std::endl;
 	if(cornersAvailable == 0){
+
 		m_xTarget = visitedCorners[visitedCornersCount].cornerApproachPoint.x();
 		m_yTarget = visitedCorners[visitedCornersCount].cornerApproachPoint.y();
 		std::cout << "No more corners - Aproaching last visited corner:" << visitedCorners[visitedCornersCount].cornerApproachPoint.x() << ", " << visitedCorners[visitedCornersCount].cornerApproachPoint.y() << std::endl;
-		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
+
+		QVector<QPointF> points = {
+			{visitedCorners[visitedCornersCount].cornerBypassPoint.x(), visitedCorners[visitedCornersCount].cornerBypassPoint.y()},
+			{visitedCorners[visitedCornersCount].cornerApproachPoint.x(), visitedCorners[visitedCornersCount].cornerApproachPoint.y()}
+		};
+		auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
+		emit arcResultsReady(distance, angle, points);
+		timerStarted = false;
+		emit startCheckCornersTimer();
+
 	}
 
 }
