@@ -91,9 +91,9 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
     connect(ui->liveAvoidObstaclesButton, &QPushButton::clicked, this, &MainWindow::onLiveAvoidObstaclesButton_clicked, Qt::QueuedConnection);
 
-	QObject::connect(obstacleAvoidanceThread, &QThread::started, [this]() {
-		this->obstacleAvoidanceTrajectoryHandle();
-	});
+//	QObject::connect(obstacleAvoidanceThread, &QThread::started, [this]() {
+//		this->obstacleAvoidanceTrajectoryHandle();
+//	});
 
 	connect(checkCornersTimer, &QTimer::timeout, this, &MainWindow::doCheckCorners);
 	connect(this, &MainWindow::startCheckCornersTimer, this, &MainWindow::onStartCheckCornersTimer);
@@ -615,6 +615,10 @@ void MainWindow::obstacleAvoidanceTrajectoryInit(double X_target, double Y_targe
     std::cout << "To do: " << autoModeTarget_X << " " << autoModeTarget_Y << std::endl;
     finalTransportStarted = false;
     checkCorners = true;
+	obstacleAvoidanceThread = new QThread(this);
+	QObject::connect(obstacleAvoidanceThread, &QThread::started, [this]() {
+		this->obstacleAvoidanceTrajectoryHandle();
+	});
 	obstacleAvoidanceThread->start();
 
 }
@@ -628,7 +632,7 @@ void MainWindow::obstacleAvoidanceTrajectoryInit(double X_target, double Y_targe
 
 void MainWindow::obstacleAvoidanceTrajectoryHandle()
 {
-	while(1)
+	while(m_isInAutoMode)
 	{
 		if(m_isInAutoMode && checkingColision){
 			checkColision();
@@ -748,7 +752,9 @@ bool MainWindow::wasCornerVisited(obstacleCorner thisCorner) {
 	else{
 		for(int i = 0; i < visitedCornersCount; i++){
 //			std::cout << abs(computeDistancePoints(thisCorner.cornerPos, visitedCorners[i].cornerPos)) << std::endl;
-			if( abs(computeDistancePoints(thisCorner.cornerApproachPoint, visitedCorners[i].cornerApproachPoint)) < CORNER_VISITED_TOLERANCE ){
+			if( abs(computeDistancePoints(thisCorner.cornerApproachPoint, visitedCorners[i].cornerApproachPoint)) < CORNER_VISITED_TOLERANCE ||
+				abs(computeDistancePoints(thisCorner.cornerBypassPoint, visitedCorners[i].cornerBypassPoint)) < CORNER_VISITED_TOLERANCE ||
+				abs(computeDistancePoints(thisCorner.cornerPos, visitedCorners[i].cornerPos)) < CORNER_VISITED_TOLERANCE){
 //				std::cout << "Visited" << std::endl;
 				return true;
 			}
