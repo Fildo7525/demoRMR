@@ -663,7 +663,7 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 						m_xTarget = cornerWithShortestPath.cornerBypassPoint.x();
 						m_yTarget = cornerWithShortestPath.cornerBypassPoint.y();
 						std::cout << "Aproaching corner:" << cornerWithShortestPath.cornerApproachPoint.x() << ", " << cornerWithShortestPath.cornerApproachPoint.y() << std::endl;
-
+						visitedCorners[visitedCornersCount] = cornerWithShortestPath;
 						QVector<QPointF> points = {
 							{cornerWithShortestPath.cornerApproachPoint.x(), cornerWithShortestPath.cornerApproachPoint.y()},
 							{cornerWithShortestPath.cornerBypassPoint.x(), cornerWithShortestPath.cornerBypassPoint.y()}
@@ -671,7 +671,7 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 						auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
 						emit arcResultsReady(distance, angle, points);
 
-						visitedCorners[visitedCornersCount] = cornerWithShortestPath;
+//						visitedCorners[visitedCornersCount] = cornerWithShortestPath;
 						timerStarted = false;
 						emit startCheckCornersTimer();
 
@@ -935,6 +935,9 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 				continue;
 			}
 			if(wasCornerVisited(thisObstacleCorner)){
+				continue;
+			}
+			if(computeDistance(actual_X, actual_Y, autoModeTarget_X,autoModeTarget_Y) <  computeDistance(thisObstacleCorner.cornerApproachPoint.x(), thisObstacleCorner.cornerApproachPoint.y(), autoModeTarget_X,autoModeTarget_Y)){
 				continue;
 			}
 
