@@ -683,27 +683,93 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 			}
 		}
 		else{
-			static double lastTranslationSpeed = 0;
-			static double filteredSpeed = 0;
+			static double lastTranslationSpeed = 0.0;
+			static double filteredSpeed = 0.0;
 			static double alpha = 0.04;
 			static bool commingToWall = true;
-			static double speed = 70.0;
+			static double speed = 160.0;
+
+			static double lastRotationSpeed = 0.0;
+			static double filteredRotationSpeed = 0.0;
+			static double rotationSpeed = 0.0;
+			static double alpha_rotation = 0.1;
+			static bool rotateTowardsWall = false;
 
 			if(commingToWall){
-				speed = 70.0;
-				if(isDistanceToWallLessThen(0.5)){
+				if(isDistanceToWallLessThen(0.7)){
 					speed = 0.0;
+					if(distancePerDT < DISTANCE_PER_DT_STEADY_THRESHOLD){
+						commingToWall = false;
+						rotateTowardsWall = true;
+					}
+				}
+			}
+			else if(rotateTowardsWall){
+				if(isRotatedTowardsWall()){
+					rotationSpeed = 0.0;
+					rotateTowardsWall = false;
+				}
+				else{
+					rotationSpeed = 0.3;
 				}
 			}
 
+			filteredRotationSpeed = alpha_rotation * rotationSpeed + (1 - alpha_rotation) * lastRotationSpeed;
 			filteredSpeed = alpha * speed + (1 - alpha) * lastTranslationSpeed;
-			robot.setTranslationSpeed((int)filteredSpeed);
-			std::this_thread::sleep_for(std::chrono::milliseconds(60));
-			std::cout << filteredSpeed << std::endl;
+			if(commingToWall){
+				robot.setTranslationSpeed((int)filteredSpeed);
+				std::this_thread::sleep_for(std::chrono::milliseconds(60));
+			}
+			else if(rotateTowardsWall){
+				robot.setRotationSpeed(filteredRotationSpeed);
+				std::this_thread::sleep_for(std::chrono::milliseconds(60));
+			}
+			else{
+				robot.setTranslationSpeed((int)filteredSpeed);
+				std::this_thread::sleep_for(std::chrono::milliseconds(30));
+				robot.setRotationSpeed(filteredRotationSpeed);
+				std::this_thread::sleep_for(std::chrono::milliseconds(30));
+			}
+
+
+
+			std::cout << filteredRotationSpeed << std::endl;
+
 			lastTranslationSpeed = filteredSpeed;
+			lastRotationSpeed = filteredRotationSpeed;
 		}
 	}
 
+}
+
+bool MainWindow::isRotatedTowardsWall(){
+	double sideDist = 0;
+	double sideDistLast = 0;
+	double sideDistNext = 0;
+	double frontDist = 0;
+	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i){
+		if(copyOfLaserData.Data[i].scanAngle < 92 && copyOfLaserData.Data[i].scanAngle > 88){
+			sideDist = copyOfLaserData.Data[i].scanDistance + copyOfLaserData.Data[i-1].scanDistance + copyOfLaserData.Data[i+1].scanDistance;
+			sideDist = sideDist / 1000.0;
+			sideDist = sideDist / 3.0;
+			sideDistLast = copyOfLaserData.Data[i-2].scanDistance + copyOfLaserData.Data[i-3].scanDistance + copyOfLaserData.Data[i-4].scanDistance;
+			sideDistLast = sideDistLast / 1000.0;
+			sideDistLast = sideDistLast / 3.0;
+			sideDistNext = copyOfLaserData.Data[i+2].scanDistance + copyOfLaserData.Data[i+3].scanDistance + copyOfLaserData.Data[i+4].scanDistance;
+			sideDistNext = sideDistNext / 1000.0;
+			sideDistNext = sideDistNext / 3.0;
+		}
+		if(copyOfLaserData.Data[i].scanAngle < 2 || copyOfLaserData.Data[i].scanAngle > 358){
+			frontDist = copyOfLaserData.Data[i].scanDistance / 1000.0;
+		}
+
+	}
+	if(sideDist < sideDistLast && sideDist < sideDistNext && frontDist > 1.0){
+		return true;
+	}
+	else {
+		return false;
+	}
 }
 
 bool MainWindow::isDistanceToWallLessThen(float dist){
