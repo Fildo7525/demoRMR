@@ -123,6 +123,7 @@ private slots:
 	void obstacleAvoidanceAbort();
 	bool isDistanceToWallLessThen(float dist);
 	bool isRotatedTowardsWall();
+	double getRegulationError();
 
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);

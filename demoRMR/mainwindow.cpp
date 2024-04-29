@@ -695,6 +695,8 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 			static double alpha_rotation = 0.1;
 			static bool rotateTowardsWall = false;
 
+			static bool regulationOn = false;
+
 			if(commingToWall){
 				if(isDistanceToWallLessThen(0.7)){
 					speed = 0.0;
@@ -708,10 +710,16 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 				if(isRotatedTowardsWall()){
 					rotationSpeed = 0.0;
 					rotateTowardsWall = false;
+					regulationOn = true;
 				}
 				else{
 					rotationSpeed = 0.3;
 				}
+			}
+			else if(regulationOn){
+				speed = 120.0;
+
+				rotationSpeed = getRegulationError();
 			}
 
 			filteredRotationSpeed = alpha_rotation * rotationSpeed + (1 - alpha_rotation) * lastRotationSpeed;
@@ -733,13 +741,64 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 
 
 
-			std::cout << filteredRotationSpeed << std::endl;
+//			std::cout << filteredRotationSpeed << std::endl;
 
 			lastTranslationSpeed = filteredSpeed;
 			lastRotationSpeed = filteredRotationSpeed;
 		}
 	}
 
+}
+
+double MainWindow::getRegulationError(){
+	double error = 0.0;
+	double sideDist = 0.0;
+	double sideDistLast = 0.0;
+	double sideDistNext = 0.0;
+	double frontDist = 0.0;
+	double PID_P = 10.0;
+	double sat = 3.14;
+
+	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i){
+		if(copyOfLaserData.Data[i].scanAngle < 92.0 && copyOfLaserData.Data[i].scanAngle > 88.0){
+			sideDist = copyOfLaserData.Data[i].scanDistance + copyOfLaserData.Data[i-1].scanDistance + copyOfLaserData.Data[i+1].scanDistance;
+			sideDist = sideDist / 1000.0;
+			sideDist = sideDist / 3.0;
+			sideDistLast = copyOfLaserData.Data[i-2].scanDistance + copyOfLaserData.Data[i-3].scanDistance + copyOfLaserData.Data[i-4].scanDistance;
+			sideDistLast = sideDistLast / 1000.0;
+			sideDistLast = sideDistLast / 3.0;
+			sideDistNext = copyOfLaserData.Data[i+2].scanDistance + copyOfLaserData.Data[i+3].scanDistance + copyOfLaserData.Data[i+4].scanDistance;
+			sideDistNext = sideDistNext / 1000.0;
+			sideDistNext = sideDistNext / 3.0;
+		}
+		if(copyOfLaserData.Data[i].scanAngle < 2.0 || copyOfLaserData.Data[i].scanAngle > 358.0){
+//			std::cout << copyOfLaserData.Data[i].scanAngle << " " << copyOfLaserData.Data[i].scanDistance << std::endl;
+			frontDist = copyOfLaserData.Data[i].scanDistance / 1000.0;
+		}
+
+	}
+
+	if(sideDist > sideDistLast){
+		error = error + abs(sideDist - sideDistLast);
+	}
+	else if(sideDist > sideDistNext){
+		error = error +( (-1) * abs(sideDist - sideDistNext) );
+	}
+	if(frontDist < 1.0 && frontDist > 0.0){
+		std::cout << frontDist << std::endl;
+		error = error + 0.5*(1.0 - frontDist) ;
+	}
+
+
+	error = error * PID_P;
+	if(error > sat){
+		error = sat;
+	}
+	else if (error < (-1) * sat){
+		error = (-1) * sat;
+	}
+
+	return error;
 }
 
 bool MainWindow::isRotatedTowardsWall(){
