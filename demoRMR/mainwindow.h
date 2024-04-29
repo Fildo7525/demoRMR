@@ -121,6 +121,7 @@ private slots:
 	void onStartCheckCornersTimer();
 	void checkColision();
 	void obstacleAvoidanceAbort();
+	bool isDistanceToWallLessThen(float dist);
 
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);
@@ -207,6 +208,7 @@ private:
 	bool timerStarted;
 	bool isInitialCornerCheck;
 	bool checkingColision;
+	bool wallFollow;
 };
 
 #endif // MAINWINDOW_H

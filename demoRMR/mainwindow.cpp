@@ -47,6 +47,7 @@ MainWindow::MainWindow(QWidget *parent)
 	, timerStarted(false)
 	, isInitialCornerCheck(true)
 	, checkingColision(false)
+	, wallFollow(true)
 {
 	qDebug() << "MainWindow starting";
 	//tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
@@ -634,53 +635,84 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 {
 	while(m_isInAutoMode)
 	{
-		if(m_isInAutoMode && checkingColision){
-			checkColision();
-		}
-		if (m_isInAutoMode && distancePerDT < DISTANCE_PER_DT_STEADY_THRESHOLD) // analyse stuff only when robot is steady
-		{
-			double distanceToTarget = computeDistance(m_x,m_y,autoModeTarget_X,autoModeTarget_Y);
-			double angleToTarget =  computeAngle(m_x,m_y,autoModeTarget_X,autoModeTarget_Y,m_fi);
-
-			if (doISeeTheTarget(copyOfLaserData,angleToTarget,distanceToTarget))
-			{
-				if(!finalTransportStarted)
-				{
-					std::cout << "target visible at: " << angleToTarget << std::endl;
-					finalTransportStarted = true;
-					doFinalTransport();
-				}
+		if(!wallFollow){
+			if(m_isInAutoMode && checkingColision){
+				checkColision();
 			}
-			else
+			if (m_isInAutoMode && distancePerDT < DISTANCE_PER_DT_STEADY_THRESHOLD) // analyse stuff only when robot is steady
 			{
-				if(checkCorners)
+				double distanceToTarget = computeDistance(m_x,m_y,autoModeTarget_X,autoModeTarget_Y);
+				double angleToTarget =  computeAngle(m_x,m_y,autoModeTarget_X,autoModeTarget_Y,m_fi);
+
+				if (doISeeTheTarget(copyOfLaserData,angleToTarget,distanceToTarget))
 				{
-					checkCorners = false;
-					analyseCorners(copyOfLaserData, m_x,m_y);
-					if(cornersAvailable > 0)
+					if(!finalTransportStarted)
 					{
-						findCornerWithShortestPath();
-						m_xTarget = cornerWithShortestPath.cornerBypassPoint.x();
-						m_yTarget = cornerWithShortestPath.cornerBypassPoint.y();
-						std::cout << "Aproaching corner:" << cornerWithShortestPath.cornerApproachPoint.x() << ", " << cornerWithShortestPath.cornerApproachPoint.y() << std::endl;
-						visitedCorners[visitedCornersCount] = cornerWithShortestPath;
-						QVector<QPointF> points = {
-							{cornerWithShortestPath.cornerApproachPoint.x(), cornerWithShortestPath.cornerApproachPoint.y()},
-							{cornerWithShortestPath.cornerBypassPoint.x(), cornerWithShortestPath.cornerBypassPoint.y()}
-						};
-						auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
-						emit arcResultsReady(distance, angle, points);
+						std::cout << "target visible at: " << angleToTarget << std::endl;
+						finalTransportStarted = true;
+						doFinalTransport();
+					}
+				}
+				else
+				{
+					if(checkCorners)
+					{
+						checkCorners = false;
+						analyseCorners(copyOfLaserData, m_x,m_y);
+						if(cornersAvailable > 0)
+						{
+							findCornerWithShortestPath();
+							m_xTarget = cornerWithShortestPath.cornerBypassPoint.x();
+							m_yTarget = cornerWithShortestPath.cornerBypassPoint.y();
+							std::cout << "Aproaching corner:" << cornerWithShortestPath.cornerApproachPoint.x() << ", " << cornerWithShortestPath.cornerApproachPoint.y() << std::endl;
+							visitedCorners[visitedCornersCount] = cornerWithShortestPath;
+							QVector<QPointF> points = {
+								{cornerWithShortestPath.cornerApproachPoint.x(), cornerWithShortestPath.cornerApproachPoint.y()},
+								{cornerWithShortestPath.cornerBypassPoint.x(), cornerWithShortestPath.cornerBypassPoint.y()}
+							};
+							auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
+							emit arcResultsReady(distance, angle, points);
 
-//						visitedCorners[visitedCornersCount] = cornerWithShortestPath;
-						timerStarted = false;
-						emit startCheckCornersTimer();
+	//						visitedCorners[visitedCornersCount] = cornerWithShortestPath;
+							timerStarted = false;
+							emit startCheckCornersTimer();
 
+						}
 					}
 				}
 			}
 		}
+		else{
+			static double lastTranslationSpeed = 0;
+			static double filteredSpeed = 0;
+			static double alpha = 0.04;
+			static bool commingToWall = true;
+			static double speed = 70.0;
+
+			if(commingToWall){
+				speed = 70.0;
+				if(isDistanceToWallLessThen(0.5)){
+					speed = 0.0;
+				}
+			}
+
+			filteredSpeed = alpha * speed + (1 - alpha) * lastTranslationSpeed;
+			robot.setTranslationSpeed((int)filteredSpeed);
+			std::this_thread::sleep_for(std::chrono::milliseconds(60));
+			std::cout << filteredSpeed << std::endl;
+			lastTranslationSpeed = filteredSpeed;
+		}
 	}
 
+}
+
+bool MainWindow::isDistanceToWallLessThen(float dist){
+	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i){
+		if((copyOfLaserData.Data[i].scanDistance / 1000.0) < dist && (copyOfLaserData.Data[i].scanDistance > 0) && (copyOfLaserData.Data[i].scanAngle < 30 ||  copyOfLaserData.Data[i].scanAngle > 330)){
+			return true;
+		}
+	}
+	return false;
 }
 
 void MainWindow::checkColision() {
