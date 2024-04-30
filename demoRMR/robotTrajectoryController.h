@@ -72,6 +72,7 @@ public slots:
 	void on_requestArc_move(double distance, double rotation);
 
 	void on_lidarDataReady_map(LaserMeasurement laserData);
+	void on_appendTransitionPoints_append(QVector<QPointF> points);
 
 public: signals:
 	void pointCloudCaluculated(QVector<QPointF> points);

@@ -413,6 +413,16 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 	m_fileWriteCounter++;
 }
 
+void RobotTrajectoryController::on_appendTransitionPoints_append(QVector<QPointF> points)
+{
+	for (auto rbegin = points.rbegin(); rbegin != points.rend(); rbegin++) {
+		m_points.push_front(*rbegin);
+	}
+
+	auto [distance, rotation] = qobject_cast<MainWindow *>(m_mainWindow)->calculateTrajectory();
+	handleArcResults(distance, rotation, m_points);
+}
+
 std::ostream &operator<<(std::ostream &os, const RobotTrajectoryController::Map &map)
 {
 	for (size_t i = 0; i < map.size(); i++) {
