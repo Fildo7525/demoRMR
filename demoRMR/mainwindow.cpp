@@ -35,7 +35,18 @@ MainWindow::MainWindow(QWidget *parent)
 	, m_yTarget(0)
 	, m_controllerThread(new QThread(this))
 	, m_plannerThread(new QThread(this))
-	, m_robotStartupLocation(false)
+	, obstacleAvoidanceThread(new QThread(this))
+    , m_isInAutoMode(false)
+    , autoModeTarget_X(0)
+    , autoModeTarget_Y(0)
+    , autoModeInit_X(0)
+    , autoModeInit_Y(0)
+    , finalTransportStarted(false)
+    , m_robotStartupLocation(false)
+	, visitedCornersCount(0)
+	, timerStarted(false)
+	, isInitialCornerCheck(true)
+	, checkingColision(false)
 {
 	qDebug() << "MainWindow starting";
 	//tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
@@ -52,6 +63,9 @@ MainWindow::MainWindow(QWidget *parent)
 	}
 
 	datacounter = 0;
+
+
+	checkCornersTimer = new QTimer(this);
 	//  timer = new QTimer(this);
 	//	connect(timer, SIGNAL(timeout()), this, SLOT(getNewFrame()));
 	actIndex = -1;
@@ -75,6 +89,14 @@ MainWindow::MainWindow(QWidget *parent)
 
 	connect(ui->linSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onLinSubmitButtonClicked, Qt::QueuedConnection);
 	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
+    connect(ui->liveAvoidObstaclesButton, &QPushButton::clicked, this, &MainWindow::onLiveAvoidObstaclesButton_clicked, Qt::QueuedConnection);
+
+//	QObject::connect(obstacleAvoidanceThread, &QThread::started, [this]() {
+//		this->obstacleAvoidanceTrajectoryHandle();
+//	});
+
+	connect(checkCornersTimer, &QTimer::timeout, this, &MainWindow::doCheckCorners);
+	connect(this, &MainWindow::startCheckCornersTimer, this, &MainWindow::onStartCheckCornersTimer);
 
 	// Starting threads
 	m_controllerThread->start();
@@ -192,6 +214,11 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 	}
 	datacounter++;
 
+//    if (m_isInAutoMode)
+//    {
+//        obstacleAvoidanceTrajectoryHandle(copyOfLaserData,m_x,m_y,m_fi);
+//    }
+
 	return 0;
 }
 
@@ -248,6 +275,7 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 			m_robotStartupLocation = true;
 		}
 	}
+	distancePerDT = abs(rightEncDist) + abs(leftEncDist);
 }
 
 static QVector<QPointF> generateSequence(const QPointF &min, const QPointF &max, const QPointF &line)
@@ -406,26 +434,31 @@ void MainWindow::on_pushButton_2_clicked() //forward
 {
 	//pohyb dopredu
 	emit moveForward(500);
+	obstacleAvoidanceAbort();
 }
 
 void MainWindow::on_pushButton_3_clicked() //back
 {
 	emit moveForward(-250);
+	obstacleAvoidanceAbort();
 }
 
 void MainWindow::on_pushButton_6_clicked() //left
 {
 	emit changeRotation(3.14159 / 2);
+	obstacleAvoidanceAbort();
 }
 
 void MainWindow::on_pushButton_5_clicked() //right
 {
 	emit changeRotation(-3.14159 / 2);
+	obstacleAvoidanceAbort();
 }
 
 void MainWindow::on_pushButton_4_clicked() //stop
 {
 	emit moveForward(0);
+	obstacleAvoidanceAbort();
 }
 
 void MainWindow::on_pushButton_clicked()
@@ -556,3 +589,498 @@ void MainWindow::handlePath(QVector<QPointF> path)
 	emit arcResultsReady(distance, angle, path);
 }
 
+
+void MainWindow::onLiveAvoidObstaclesButton_clicked(bool clicked)
+{
+    bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
+    bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
+
+    if (ok1 && ok2) {
+        obstacleAvoidanceTrajectoryInit(m_xTarget,m_yTarget,m_x,m_y,m_fi);
+    }
+}
+
+void MainWindow::obstacleAvoidanceAbort(){
+	m_isInAutoMode = false;
+	autoModeTarget_X=0;
+	autoModeTarget_Y=0;
+	autoModeInit_X=0;
+	autoModeInit_Y=0;
+	finalTransportStarted=false;
+	visitedCornersCount=0;
+	timerStarted=false;
+	isInitialCornerCheck=true;
+	checkingColision=false;
+}
+
+void MainWindow::obstacleAvoidanceTrajectoryInit(double X_target, double Y_target, double actual_X, double actual_Y, double actual_Fi)
+{
+    autoModeTarget_X = X_target;
+    autoModeTarget_Y = Y_target;
+    m_isInAutoMode = true;
+    autoModeInit_X = actual_X;
+    autoModeInit_Y = actual_Y;
+    std::cout << "To do: " << autoModeTarget_X << " " << autoModeTarget_Y << std::endl;
+    finalTransportStarted = false;
+    checkCorners = true;
+	obstacleAvoidanceThread = new QThread(this);
+	QObject::connect(obstacleAvoidanceThread, &QThread::started, [this]() {
+		this->obstacleAvoidanceTrajectoryHandle();
+	});
+	obstacleAvoidanceThread->start();
+
+}
+
+
+// Start - [0.50 0.50]
+// Top right - [5.02, 4.21] => [4.52, 3.71]
+// Mid right - [5.22, 2.65] => [4.72, 2.15]
+// Botton right - [5.12, -0.35] => [4.62, -0.85]
+// Bottom left - [1.7, -0.9] => [1.2, -1.4]
+
+void MainWindow::obstacleAvoidanceTrajectoryHandle()
+{
+	while(m_isInAutoMode)
+	{
+		if(m_isInAutoMode && checkingColision){
+			checkColision();
+		}
+		if (m_isInAutoMode && distancePerDT < DISTANCE_PER_DT_STEADY_THRESHOLD) // analyse stuff only when robot is steady
+		{
+			double distanceToTarget = computeDistance(m_x,m_y,autoModeTarget_X,autoModeTarget_Y);
+			double angleToTarget =  computeAngle(m_x,m_y,autoModeTarget_X,autoModeTarget_Y,m_fi);
+
+			if (doISeeTheTarget(copyOfLaserData,angleToTarget,distanceToTarget))
+			{
+				if(!finalTransportStarted)
+				{
+					std::cout << "target visible at: " << angleToTarget << std::endl;
+					finalTransportStarted = true;
+					doFinalTransport();
+				}
+			}
+			else
+			{
+				if(checkCorners)
+				{
+					checkCorners = false;
+					analyseCorners(copyOfLaserData, m_x,m_y);
+					if(cornersAvailable > 0)
+					{
+						findCornerWithShortestPath();
+						m_xTarget = cornerWithShortestPath.cornerBypassPoint.x();
+						m_yTarget = cornerWithShortestPath.cornerBypassPoint.y();
+						std::cout << "Aproaching corner:" << cornerWithShortestPath.cornerApproachPoint.x() << ", " << cornerWithShortestPath.cornerApproachPoint.y() << std::endl;
+						visitedCorners[visitedCornersCount] = cornerWithShortestPath;
+						QVector<QPointF> points = {
+							{cornerWithShortestPath.cornerApproachPoint.x(), cornerWithShortestPath.cornerApproachPoint.y()},
+							{cornerWithShortestPath.cornerBypassPoint.x(), cornerWithShortestPath.cornerBypassPoint.y()}
+						};
+						auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
+						emit arcResultsReady(distance, angle, points);
+
+//						visitedCorners[visitedCornersCount] = cornerWithShortestPath;
+						timerStarted = false;
+						emit startCheckCornersTimer();
+
+					}
+				}
+			}
+		}
+	}
+
+}
+
+void MainWindow::checkColision() {
+	int count = 0;
+	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i){
+		if((copyOfLaserData.Data[i].scanDistance / 1000.0) < COLISION_THRESHOLD && (copyOfLaserData.Data[i].scanDistance / 1000.0) > 0.0000001){
+			count++;
+			if(count > 3){
+				std::cout << "Too close, stopped." << std::endl;
+				emit moveForward(0);
+				checkingColision = false;
+				checkCorners = true;
+				return;
+			}
+		}
+	}
+}
+
+void MainWindow::onStartCheckCornersTimer() {
+	// Start the timer
+	if(m_isInAutoMode){
+		checkCornersTimer->start(3000);
+	}
+}
+
+void MainWindow::doCheckCorners() {
+	std::cout << m_trajectoryController->finalDistanceError() << std::endl;
+	if(!timerStarted && m_isInAutoMode && m_trajectoryController->finalDistanceError() < 0.1){
+		checkingColision = true;
+		checkCorners = true;
+		timerStarted = true;
+		if(isInitialCornerCheck){
+			isInitialCornerCheck = false;
+		}
+		else{
+			visitedCornersCount++;
+		}
+		std::cout << "Check corner to be done at next stop." << std::endl;
+		checkCornersTimer->stop();
+	}
+
+}
+
+void MainWindow::findCornerWithShortestPath() {
+	std::cout << "Attempting to find corner." << std::endl;
+	int shortestIndex = -1;
+	double shortestPathLen = std::numeric_limits<double>::max();
+
+	for (int i = 0; i < cornersAvailable; ++i) {
+		if (obstacleCorners[i].totalPathLen < shortestPathLen) {
+			shortestPathLen = obstacleCorners[i].totalPathLen;
+			shortestIndex = i;
+		}
+	}
+
+	if (shortestIndex != -1) {
+		cornerWithShortestPath = obstacleCorners[shortestIndex];
+	} else {
+		std::cout << "No obstacleCorner found." << std::endl;
+	}
+
+}
+
+bool MainWindow::wasCornerVisited(obstacleCorner thisCorner) {
+	if(visitedCornersCount == 0){
+		std::cout << "First corner to visit" << std::endl;
+		return false;
+	}
+	else{
+		for(int i = 0; i < visitedCornersCount; i++){
+//			std::cout << abs(computeDistancePoints(thisCorner.cornerPos, visitedCorners[i].cornerPos)) << std::endl;
+			if( abs(computeDistancePoints(thisCorner.cornerApproachPoint, visitedCorners[i].cornerApproachPoint)) < CORNER_VISITED_TOLERANCE ||
+				abs(computeDistancePoints(thisCorner.cornerBypassPoint, visitedCorners[i].cornerBypassPoint)) < CORNER_VISITED_TOLERANCE ||
+				abs(computeDistancePoints(thisCorner.cornerApproachPoint, visitedCorners[i].cornerBypassPoint)) < CORNER_VISITED_TOLERANCE ||
+				abs(computeDistancePoints(thisCorner.cornerBypassPoint, visitedCorners[i].cornerApproachPoint)) < CORNER_VISITED_TOLERANCE ||
+				abs(computeDistancePoints(thisCorner.cornerPos, visitedCorners[i].cornerPos)) < CORNER_VISITED_TOLERANCE){
+//				std::cout << "Visited" << std::endl;
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
+void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, double actual_Y) {
+
+    cornersAvailable = 0;
+    // Compute differentiation
+    laserDataDiff.numberOfScans = laserData.numberOfScans - 1;
+    for (size_t i = 0; i < laserData.numberOfScans - 1; ++i) {
+        laserDataDiff.Data[i].scanDistance = laserData.Data[i+1].scanDistance - laserData.Data[i].scanDistance;
+        laserDataDiff.Data[i].scanAngle = laserData.Data[i].scanAngle;
+
+		if(abs(laserDataDiff.Data[i].scanDistance/1000.0) > LASER_DIFF_CORNER_THRESHOLD &&
+			abs(laserDataDiff.Data[i-1].scanDistance/1000.0) < LASER_DIFF_CORNER_THRESHOLD &&
+			abs(laserDataDiff.Data[i+1].scanDistance/1000.0) < LASER_DIFF_CORNER_THRESHOLD &&
+			abs(laserDataDiff.Data[i-2].scanDistance/1000.0) < LASER_DIFF_CORNER_THRESHOLD &&
+			abs(laserDataDiff.Data[i+2].scanDistance/1000.0) < LASER_DIFF_CORNER_THRESHOLD &&
+			abs(laserDataDiff.Data[i-3].scanDistance/1000.0) < LASER_DIFF_CORNER_THRESHOLD &&
+			abs(laserDataDiff.Data[i+3].scanDistance/1000.0) < LASER_DIFF_CORNER_THRESHOLD &&
+			(laserData.Data[i+1].scanDistance/1000.0 < MAX_CORNER_DISTANCE ||
+			laserData.Data[i].scanDistance/1000.0 < MAX_CORNER_DISTANCE)	)
+        {
+
+            obstacleCorner thisObstacleCorner;
+			thisObstacleCorner.direction = laserDataDiff.Data[i].scanDistance > 0; // check hole in left or right
+
+			double angleToCorner_deg = 0.0;
+			if(laserData.Data[i].scanDistance < laserData.Data[i+1].scanDistance ) // compute corner based on closer distance
+			{
+                thisObstacleCorner.cornerPos = computeTargetPosition(actual_X, actual_Y, laserData.Data[i].scanAngle, laserData.Data[i].scanDistance/1000.0, thisObstacleCorner.direction);
+				angleToCorner_deg = laserData.Data[i].scanAngle;
+				thisObstacleCorner.neighbourPoints[0] = computeTargetPosition(actual_X, actual_Y, laserData.Data[i-1].scanAngle, laserData.Data[i-1].scanDistance/1000.0, thisObstacleCorner.direction);
+				thisObstacleCorner.neighbourPoints[1] = computeTargetPosition(actual_X, actual_Y, laserData.Data[i-2].scanAngle, laserData.Data[i-2].scanDistance/1000.0, thisObstacleCorner.direction);
+				thisObstacleCorner.neighbourPoints[2] = computeTargetPosition(actual_X, actual_Y, laserData.Data[i-3].scanAngle, laserData.Data[i-3].scanDistance/1000.0, thisObstacleCorner.direction);
+			}
+			else
+			{
+                thisObstacleCorner.cornerPos = computeTargetPosition(actual_X, actual_Y, laserData.Data[i+1].scanAngle, laserData.Data[i+1].scanDistance/1000.0, thisObstacleCorner.direction);
+				angleToCorner_deg = laserData.Data[i+1].scanAngle;
+				thisObstacleCorner.neighbourPoints[0] = computeTargetPosition(actual_X, actual_Y, laserData.Data[i+2].scanAngle, laserData.Data[i+2].scanDistance/1000.0, thisObstacleCorner.direction);
+				thisObstacleCorner.neighbourPoints[1] = computeTargetPosition(actual_X, actual_Y, laserData.Data[i+3].scanAngle, laserData.Data[i+3].scanDistance/1000.0, thisObstacleCorner.direction);
+				thisObstacleCorner.neighbourPoints[2] = computeTargetPosition(actual_X, actual_Y, laserData.Data[i+4].scanAngle, laserData.Data[i+4].scanDistance/1000.0, thisObstacleCorner.direction);
+			}
+
+			double angleToCornerRad = angleToCorner_deg * M_PI / 180.0;
+
+			double actual_Fi = m_fi * (-1);
+			actual_Fi = actual_Fi + (M_PI/2.0);
+			double actual_deg = actual_Fi * 180.0 / PI;
+
+			double resultAngleToCornerDeg =  actual_deg + angleToCorner_deg;
+
+			if(resultAngleToCornerDeg >= 360.0)
+				resultAngleToCornerDeg -= 360.0;
+			else if(resultAngleToCornerDeg < 0)
+				resultAngleToCornerDeg += 360.0;
+
+			double x_neighbour_diff = abs(thisObstacleCorner.neighbourPoints[0].x() - thisObstacleCorner.neighbourPoints[1].x()) +
+									  abs(thisObstacleCorner.neighbourPoints[1].x() - thisObstacleCorner.neighbourPoints[2].x()) ;
+			double y_neighbour_diff = abs(thisObstacleCorner.neighbourPoints[0].y() - thisObstacleCorner.neighbourPoints[1].y()) +
+									  abs(thisObstacleCorner.neighbourPoints[1].y() - thisObstacleCorner.neighbourPoints[2].y()) ;
+
+			if(thisObstacleCorner.direction) // right
+			{
+				// horizontal wall above robot
+				if(x_neighbour_diff > y_neighbour_diff && (resultAngleToCornerDeg > 270.00 || resultAngleToCornerDeg < 90.00) )
+				{
+//					std::cout << "R Ha" << std::endl;
+					thisObstacleCorner.cornerApproachPoint.setX(thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerApproachPoint.setY(thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setX(thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setY(thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
+				}
+				// horizontal wall under robot
+				else if(x_neighbour_diff > y_neighbour_diff && resultAngleToCornerDeg < 270.00 && resultAngleToCornerDeg > 90.00)
+				{
+//					std::cout << "R Hu" << std::endl;
+					thisObstacleCorner.cornerApproachPoint.setX(thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerApproachPoint.setY(thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setX(thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setY(thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
+				}
+				// vertical wall left of the robot
+				else if(x_neighbour_diff < y_neighbour_diff && resultAngleToCornerDeg > 180.00)
+				{
+//					std::cout << "R Vl" << std::endl;
+					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setX(thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setY(thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
+				}
+				// vertical wall right of the robot
+				else if(x_neighbour_diff < y_neighbour_diff && resultAngleToCornerDeg < 180.00)
+				{
+//					std::cout << "R Vr" << std::endl;
+					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setX(thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setY(thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
+				}
+				else
+				{
+					std::cout << "There was a problem with computation of corner approach point!" << std::endl;
+					continue;
+				}
+			}
+			else // left
+			{
+				// horizontal wall above robot
+				if(x_neighbour_diff > y_neighbour_diff && (resultAngleToCornerDeg > 270.00 || resultAngleToCornerDeg < 90.00 ))
+				{
+//					std::cout << "L Ha" << std::endl;
+					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setX(thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setY(thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
+				}
+				// horizontal wall under robot
+				else if(x_neighbour_diff > y_neighbour_diff && resultAngleToCornerDeg < 270.00 && resultAngleToCornerDeg > 90.00)
+				{
+//					std::cout << "L Hu" << std::endl;
+					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setX(thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setY(thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
+				}
+				// vertical wall left of the robot
+				else if(x_neighbour_diff < y_neighbour_diff && resultAngleToCornerDeg > 180.00)
+				{
+//					std::cout << "L Vl" << std::endl;
+					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setX(thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setY(thisObstacleCorner.cornerPos.y() - CORNER_APPROACH_GAP );
+				}
+				// vertical wall right of the robot
+				else if(x_neighbour_diff < y_neighbour_diff && resultAngleToCornerDeg < 180.00)
+				{
+//					std::cout << "L Vr" << std::endl;
+					thisObstacleCorner.cornerApproachPoint.setX( thisObstacleCorner.cornerPos.x() - CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerApproachPoint.setY( thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setX(thisObstacleCorner.cornerPos.x() + CORNER_APPROACH_GAP );
+					thisObstacleCorner.cornerBypassPoint.setY(thisObstacleCorner.cornerPos.y() + CORNER_APPROACH_GAP );
+				}
+				else
+				{
+					std::cout << "There was a problem with computation of corner approach point!" << std::endl;
+					continue;
+				}
+			}
+
+            thisObstacleCorner.firstPathLen = computeDistance(actual_X, actual_Y, thisObstacleCorner.cornerPos.x(), thisObstacleCorner.cornerPos.y());
+            thisObstacleCorner.secondPathLen = computeDistance(thisObstacleCorner.cornerPos.x(), thisObstacleCorner.cornerPos.y(), autoModeTarget_X,autoModeTarget_Y);
+            thisObstacleCorner.totalPathLen =  thisObstacleCorner.firstPathLen + thisObstacleCorner.secondPathLen;
+
+			thisObstacleCorner.firstPathLenReal = computeDistance(actual_X, actual_Y, thisObstacleCorner.cornerApproachPoint.x(), thisObstacleCorner.cornerApproachPoint.y());
+			thisObstacleCorner.secondPathLenReal = computeDistance(thisObstacleCorner.cornerApproachPoint.x(), thisObstacleCorner.cornerApproachPoint.y(), autoModeTarget_X,autoModeTarget_Y);
+			thisObstacleCorner.totalPathLenReal =  thisObstacleCorner.firstPathLenReal + thisObstacleCorner.secondPathLenReal;
+
+			if(thisObstacleCorner.firstPathLen == 0.0 || thisObstacleCorner.secondPathLen == 0.0){
+				// computation error
+				continue;
+			}
+			if(thisObstacleCorner.totalPathLenReal < 0.3){
+				// too short path
+				continue;
+			}
+			if( (abs(actual_X - thisObstacleCorner.cornerApproachPoint.x()) < 0.12) &&
+				(abs(actual_Y - thisObstacleCorner.cornerApproachPoint.y()) < 0.12) ) {
+				// same point as robot
+				continue;
+			}
+			if(wasCornerVisited(thisObstacleCorner)){
+				continue;
+			}
+			if(computeDistance(actual_X, actual_Y, autoModeTarget_X,autoModeTarget_Y) <  computeDistance(thisObstacleCorner.cornerApproachPoint.x(), thisObstacleCorner.cornerApproachPoint.y(), autoModeTarget_X,autoModeTarget_Y)){
+				continue;
+			}
+
+			if(0)
+            {
+                std::cout << "Corner at angle: " << laserDataDiff.Data[i].scanAngle;
+                std::cout << "at pos: (" << thisObstacleCorner.cornerPos.x() << ", " << thisObstacleCorner.cornerPos.y() << ")";
+                std::cout << "at dir: " << thisObstacleCorner.direction;
+                std::cout << "first path: " << thisObstacleCorner.firstPathLen;
+                std::cout << "second path: " <<  thisObstacleCorner.secondPathLen;
+				std::cout << "sum: " <<   thisObstacleCorner.totalPathLen;
+				std::cout << "real path:" << thisObstacleCorner.totalPathLenReal;
+				std::cout << "app point: (" << thisObstacleCorner.cornerApproachPoint.x() << ", " << thisObstacleCorner.cornerApproachPoint.y() << ")" << std::endl;
+            }
+
+            obstacleCorners[cornersAvailable] = thisObstacleCorner;
+
+            cornersAvailable++;
+        }
+    }
+    std::cout << cornersAvailable << std::endl;
+	if(cornersAvailable == 0){
+
+		m_xTarget = visitedCorners[visitedCornersCount].cornerApproachPoint.x();
+		m_yTarget = visitedCorners[visitedCornersCount].cornerApproachPoint.y();
+		std::cout << "No more corners - Aproaching last visited corner:" << visitedCorners[visitedCornersCount].cornerApproachPoint.x() << ", " << visitedCorners[visitedCornersCount].cornerApproachPoint.y() << std::endl;
+
+		QVector<QPointF> points = {
+			{visitedCorners[visitedCornersCount].cornerBypassPoint.x(), visitedCorners[visitedCornersCount].cornerBypassPoint.y()},
+			{visitedCorners[visitedCornersCount].cornerApproachPoint.x(), visitedCorners[visitedCornersCount].cornerApproachPoint.y()}
+		};
+		auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
+		emit arcResultsReady(distance, angle, points);
+		timerStarted = false;
+		emit startCheckCornersTimer();
+
+	}
+
+}
+
+QPointF MainWindow::computeTargetPosition(double actual_X, double actual_Y, double angleToTarget_deg, double distanceToTarget, bool dir) {
+
+
+    // Convert the angle to radians
+    double angleRad = angleToTarget_deg * M_PI / 180.0;
+    angleRad = angleRad - (m_fi - M_PI/2.0);
+	if(angleRad > (2.0 * M_PI) )
+		angleRad = angleRad - (2.0 * M_PI);
+
+    // Compute the target position using trigonometry
+    double target_X = actual_X + distanceToTarget * sin(angleRad);
+    double target_Y = actual_Y + distanceToTarget * cos(angleRad);
+
+	if(0)
+    {
+        std::cout << " myX:" << actual_X;
+        std::cout << " myY:" << actual_Y;
+        std::cout << " angle:" << angleToTarget_deg;
+        std::cout << " dist:" << distanceToTarget;
+        std::cout << " dir:" << dir;
+        std::cout << " target_X:" << target_X;
+        std::cout << " target_Y:" << target_Y << std::endl;
+
+    }
+
+    return QPointF(target_X, target_Y);
+}
+
+void MainWindow::doFinalTransport()
+{
+	emit moveForward(0);
+    bool ok1 = updateTarget(ui->targetXLine, m_xTarget);
+    bool ok2 = updateTarget(ui->targetYLine, m_yTarget);
+	std::cout << "Final transport started to: X:" << m_xTarget << " Y:" << m_yTarget <<std::endl;
+
+    if (ok1 && ok2) {
+		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
+    }
+    m_isInAutoMode = false;
+	obstacleAvoidanceAbort();
+
+}
+
+bool MainWindow::doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget)
+{
+//	std::cout << distanceToTarget << " " << angleToTarget << std::endl;
+    for(int i = 0; i<laserData.numberOfScans; i++)
+    {
+		if(laserData.Data[i].scanAngle < (angleToTarget+0.6) && laserData.Data[i].scanAngle > (angleToTarget-0.6))
+        {
+			if((laserData.Data[i].scanDistance/1000.0) > (distanceToTarget + 0.15) &&
+					(laserData.Data[i-1].scanDistance/1000.0) > (distanceToTarget + 0.15) &&
+					(laserData.Data[i+1].scanDistance/1000.0) > (distanceToTarget + 0.15) &&
+					(laserData.Data[i-2].scanDistance/1000.0) > (distanceToTarget + 0.15) &&
+					(laserData.Data[i+2].scanDistance/1000.0) > (distanceToTarget + 0.15) &&
+					(laserData.Data[i-3].scanDistance/1000.0) > (distanceToTarget + 0.15) &&
+					(laserData.Data[i+3].scanDistance/1000.0) > (distanceToTarget + 0.15))
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+double MainWindow::computeDistance(double x1, double y1, double x2, double y2) {
+    double deltaX = x2 - x1;
+    double deltaY = y2 - y1;
+    return sqrt(deltaX * deltaX + deltaY * deltaY);
+}
+
+double MainWindow::computeDistancePoints(QPointF A, QPointF B) {
+	double deltaX = B.x() - A.x();
+	double deltaY = B.y() - A.y();
+	return sqrt(deltaX * deltaX + deltaY * deltaY);
+}
+
+double  MainWindow::computeAngle(double x1, double y1, double x2, double y2, double actual_Fi) {
+    double deltaY = y2 - y1;
+    double deltaX = x2 - x1;
+
+    // Compute the angle in radians using atan2
+    double angle_rad = atan2(deltaY, deltaX);
+	angle_rad = angle_rad * (-1);
+	angle_rad = angle_rad + (M_PI/2.0);
+
+	actual_Fi = actual_Fi * (-1);
+	actual_Fi = actual_Fi + (M_PI/2.0);
+
+	double angle_deg = angle_rad * 180.0 / PI;
+	double actual_deg = actual_Fi * 180.0 / PI;
+
+	double result = angle_deg - actual_deg;
+
+//	std::cout << actual_Fi << " " << actual_deg << " " << angle_rad << " " << angle_deg << " " << result << std::endl;
+
+	return result;
+}

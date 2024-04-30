@@ -340,11 +340,11 @@ void RobotTrajectoryController::handleLinResults(double distance, double rotatio
 void RobotTrajectoryController::handleArcResults(double distance, double rotation, QVector<QPointF> points)
 {
 	m_points = points;
-	if (rotation > PI/2 || rotation < -PI/2) {
-		m_arcExpected = true;
-		rotateRobotTo(rotation);
-		return;
-	}
+
+	m_arcExpected = true;
+	rotateRobotTo(rotation);
+	return;
+
 
 	moveByArcTo(distance, rotation);
 }
