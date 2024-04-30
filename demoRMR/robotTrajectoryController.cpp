@@ -43,7 +43,7 @@ RobotTrajectoryController::RobotTrajectoryController(Robot *robot, QObject *wind
 	m_accelerationTimer.setInterval(timerInterval);
 	m_accelerationTimer.setSingleShot(false);
 
-	m_positionTimer.setInterval(timerInterval*2);
+	m_positionTimer.setInterval(timerInterval * 2);
 	m_positionTimer.setSingleShot(false);
 
 	m_stoppingTimer.setInterval(3'000);
@@ -217,7 +217,7 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 		m_stoppingTimer.start();
 	}
 
-	static auto limit = [] (double &speed, const double target, double rate) {
+	static auto limit = [](double &speed, const double target, double rate) {
 		if (speed > 0 && target < 0) {
 			speed += rate;
 		}
@@ -269,7 +269,6 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 	}
 
 	if (std::abs(error) < maxCorrection) {
-
 		if (m_movementType == MovementType::Rotation && !m_arcExpected) {
 			emit requestMovement(localDistanceError());
 		}
@@ -287,7 +286,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 				m_points.removeFirst();
 
 			double rotation = localRotationError();
-			if (rotation > PI/2 || rotation < -PI/2) {
+			if (rotation > PI / 2 || rotation < -PI / 2) {
 				m_arcExpected = true;
 				m_forwardSpeed = 0;
 				m_rotationSpeed = 0;
@@ -316,7 +315,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 	else if (m_movementType == MovementType::Arc) {
 		u = m_controller->computeFromError(finalDistanceError(), true);
 		double o = m_rotationController->computeFromError(localRotationError());
-		setArcSpeed(u, u/o);
+		setArcSpeed(u, u / o);
 	}
 }
 
@@ -368,8 +367,8 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 {
 	MainWindow *win = qobject_cast<MainWindow *>(m_mainWindow);
 	double robotAngle = win->m_fi;
-	double robotX = 0+win->m_x * 1000;
-	double robotY = 0-win->m_y * 1000;
+	double robotX = 0 + win->m_x * 1000;
+	double robotY = 0 - win->m_y * 1000;
 	QVector<QPointF> points;
 	long numberOfScans = laserData.numberOfScans;
 
@@ -433,4 +432,3 @@ std::ostream &operator<<(std::ostream &os, const RobotTrajectoryController::Map 
 	}
 	return os;
 }
-

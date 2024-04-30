@@ -32,19 +32,20 @@
 #define MAX_CORNER_DISTANCE 3.0
 #define COLISION_THRESHOLD 0.25
 
-struct obstacleCorner {
-    QPointF cornerPos;
+struct obstacleCorner
+{
+	QPointF cornerPos;
 	QPointF neighbourPoints[3];
 	QPointF cornerApproachPoint;
 	QPointF cornerBypassPoint;
-    double firstPathLen;
+	double firstPathLen;
 	double secondPathLen;
-    double totalPathLen;
+	double totalPathLen;
 	double firstPathLenReal;
 	double secondPathLenReal;
 	double totalPathLenReal;
-    bool direction; // true-right, false-left
-    // Add other members as needed
+	bool direction; // true-right, false-left
+	// Add other members as needed
 };
 
 namespace Ui {
@@ -78,9 +79,9 @@ private:
 	void paintEvent(QPaintEvent *event); // Q_DECL_OVERRIDE;
 	void calculateOdometry(const TKobukiData &robotdata);
 	void _calculateTrajectory(RobotTrajectoryController::MovementType type);
-    double computeDistance(double x1, double y1, double x2, double y2);
-    double computeAngle(double x1, double y1, double x2, double y2, double acutal_Fi);
-    QPointF computeTargetPosition(double actual_X, double actual_Y, double angleToTarget_deg, double distanceToTarget, bool dir);
+	double computeDistance(double x1, double y1, double x2, double y2);
+	double computeAngle(double x1, double y1, double x2, double y2, double acutal_Fi);
+	QPointF computeTargetPosition(double actual_X, double actual_Y, double angleToTarget_deg, double distanceToTarget, bool dir);
 
 private slots:
 	void on_pushButton_8_clicked();
@@ -108,12 +109,12 @@ private slots:
 	bool updateTarget(QLineEdit *lineEdit, double &controller);
 	void onLinSubmitButtonClicked(bool clicked);
 	void onArcSubmitButtonClicked(bool clicked);
-    void onLiveAvoidObstaclesButton_clicked(bool clicked);
-    void obstacleAvoidanceTrajectoryInit(double X_target, double Y_target, double actual_X, double actual_Y, double actual_Fi);
+	void onLiveAvoidObstaclesButton_clicked(bool clicked);
+	void obstacleAvoidanceTrajectoryInit(double X_target, double Y_target, double actual_X, double actual_Y, double actual_Fi);
 	void obstacleAvoidanceTrajectoryHandle();
-    bool doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget);
-    void doFinalTransport();
-    void analyseCorners(LaserMeasurement& laserData, double actual_X, double actual_Y);
+	bool doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget);
+	void doFinalTransport();
+	void analyseCorners(LaserMeasurement &laserData, double actual_X, double actual_Y);
 	void findCornerWithShortestPath();
 	bool wasCornerVisited(obstacleCorner thisCorner);
 	double computeDistancePoints(QPointF A, QPointF B);
@@ -189,19 +190,19 @@ private:
 	bool m_robotStartupLocation;
 	double m_fiCorrection;
 
-    bool m_isInAutoMode;
-    double autoModeTarget_X;
-    double autoModeTarget_Y;
-    double autoModeInit_X;
-    double autoModeInit_Y;
-    bool finalTransportStarted;
-    LaserMeasurement laserDataDiff;
-    obstacleCorner obstacleCorners[MAX_OBSTACLE_CORNERS];
+	bool m_isInAutoMode;
+	double autoModeTarget_X;
+	double autoModeTarget_Y;
+	double autoModeInit_X;
+	double autoModeInit_Y;
+	bool finalTransportStarted;
+	LaserMeasurement laserDataDiff;
+	obstacleCorner obstacleCorners[MAX_OBSTACLE_CORNERS];
 	obstacleCorner cornerWithShortestPath;
 	obstacleCorner visitedCorners[MAX_VISITED_CORNERS];
 	int visitedCornersCount;
-    int cornersAvailable;
-    bool checkCorners;
+	int cornersAvailable;
+	bool checkCorners;
 	double distancePerDT;
 	QTimer *checkCornersTimer;
 	bool timerStarted;

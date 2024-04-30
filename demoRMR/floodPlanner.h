@@ -7,8 +7,7 @@
 #include <QString>
 #include <QVector>
 
-class FloodPlanner
-	: public QObject
+class FloodPlanner : public QObject
 {
 	Q_OBJECT;
 
@@ -64,4 +63,3 @@ private:
 };
 
 std::ostream &operator<<(std::ostream &os, const FloodPlanner::Map &map);
-

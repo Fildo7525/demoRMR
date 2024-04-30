@@ -5,10 +5,9 @@
 #include "errno.h"
 
 
-int
-set_interface_attribs (int fd, int speed, int parity)
+int set_interface_attribs(int fd, int speed, int parity)
 {
- /*       struct termios tty;
+	/*       struct termios tty;
         memset (&tty, 0, sizeof tty);
         if (tcgetattr (fd, &tty) != 0)
         {
@@ -43,13 +42,12 @@ set_interface_attribs (int fd, int speed, int parity)
                 printf ("error %d from tcsetattr", errno);
                 return -1;
         }*/
-        return 0;
+	return 0;
 }
 
-void
-set_blocking (int fd, int should_block)
+void set_blocking(int fd, int should_block)
 {
-   /*     struct termios tty;
+	/*     struct termios tty;
         memset (&tty, 0, sizeof tty);
         if (tcgetattr (fd, &tty) != 0)
         {
@@ -65,10 +63,9 @@ set_blocking (int fd, int should_block)
 }
 
 
-
 int rplidar::connect(char *comport)
 {
-/*    hCom= open(comport,O_RDWR | O_NOCTTY | O_SYNC);
+	/*    hCom= open(comport,O_RDWR | O_NOCTTY | O_SYNC);
     if ( hCom== -1 )
     {
         // Chyba:  Port sa neda otvorit
@@ -115,99 +112,81 @@ int rplidar::connect(char *comport)
 
         return 0;
     }*/
-     return 0;
+	return 0;
 }
 
 //------------
 
 void rplidar::recvCommandUDP()
 {
-    while(1)
-    {
+	while (1) {
+		//      if ((recv_len = recvfrom(s, buf, 1, 0, (struct sockaddr *) &si_other, (int*)&slen)) == -1)
+		{
+		}
+		//  printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+		//  printf("Data: %s\n" , buf);
+		if (buf[0] == 1) { }
+		else if (buf[0] == 2) {
+		}
+		else if (buf[0] == 3) {
+		}
+		else if (buf[0] == 4) {
+		}
+		else if (buf[0] == 0) {
+		}
+		else if (buf[0] == 5) {
+			//reset spojenia
+			stop();
+			// close(hCom);
+			//     Sleep(100);
+			WasEnabled = 0;
+			ktoreMeranie = -1;
+			kdeJeCele = -1;
+			poslednePoslane = -1;
+			ktoreZapisujem = -1;
+			ktorePosielam = -1;
+			stopMeasurement = 0;
+			//   int err=connect("/dev/laser");
 
-  //      if ((recv_len = recvfrom(s, buf, 1, 0, (struct sockaddr *) &si_other, (int*)&slen)) == -1)
-        {
-
-        }
-      //  printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
-      //  printf("Data: %s\n" , buf);
-        if(buf[0]==1)
-        {
-
-        }
-        else if(buf[0]==2)
-        {
-
-        }
-        else if(buf[0]==3)
-        {
-
-        }
-        else if(buf[0]==4)
-        {
-
-        }
-        else if(buf[0]==0)
-        {
-
-        }
-        else if(buf[0]==5)
-        {
-            //reset spojenia
-            stop();
-           // close(hCom);
-       //     Sleep(100);
-            WasEnabled=0;
-            ktoreMeranie=-1;
-            kdeJeCele=-1;
-            poslednePoslane=-1;
-            ktoreZapisujem=-1;
-            ktorePosielam=-1;
-            stopMeasurement=0;
-         //   int err=connect("/dev/laser");
-
-            enable();
-            start();
-        }
-
-    }
+			enable();
+			start();
+		}
+	}
 }
 
 //--tu treba dokoncit overenie ci je s laserom vsetko v poriadku.
 int rplidar::enable()
 {
-    WasEnabled=1;
-    return 0;
+	WasEnabled = 1;
+	return 0;
 }
 
 int rplidar::start()
 {
-    if( hCom== -1 )
-    {
-        printf("lidar nepripojeny\n");
-        return -1;
-    }
-    //--ale ignorujeme teraz
-    if( WasEnabled== 0 )
-    {
-        return -2;
-    }
-    ktoreMeranie=-2;
-    kdeJeCele=-1;
-    poslednePoslane=-1;
-    ktoreZapisujem=-1;
-    ktorePosielam=-1;
-    stopMeasurement=0;
-    //threadHandle=CreateThread(NULL,0,&laserVlakno,(void *)this,0,threadID);
-    return threadID;
+	if (hCom == -1) {
+		printf("lidar nepripojeny\n");
+		return -1;
+	}
+	//--ale ignorujeme teraz
+	if (WasEnabled == 0) {
+		return -2;
+	}
+	ktoreMeranie = -2;
+	kdeJeCele = -1;
+	poslednePoslane = -1;
+	ktoreZapisujem = -1;
+	ktorePosielam = -1;
+	stopMeasurement = 0;
+	//threadHandle=CreateThread(NULL,0,&laserVlakno,(void *)this,0,threadID);
+	return threadID;
 }
 
 int rplidar::stop()
 {
-    stopMeasurement=1;
-  //  WaitForSingleObject(threadHandle, INFINITE);
-   // pthread_join(threadHandle,NULL);
-  /*  char request[]={0xa5, 0x25};
+	stopMeasurement = 1;
+	//  WaitForSingleObject(threadHandle, INFINITE);
+	// pthread_join(threadHandle,NULL);
+	/*  char request[]={0xa5, 0x25};
    // int Pocet=0;
     write(hCom,&request,2);
 
@@ -220,44 +199,40 @@ int rplidar::stop()
          readnum=read(hCom,buffer,5000);
     }while(readnum>0);
 */
-    return 0;
+	return 0;
 }
 LaserMeasurement rplidar::getMeasurement()
 {
-    LaserMeasurement tempL;
-    if(stopMeasurement==1)
-    {
-        tempL.numberOfScans=-4;
-        return tempL;
-    }
-    if( hCom== -1 )
-    {
-        tempL.numberOfScans=-3;
-        return tempL;
-    }
-    if(WasEnabled==0)
-    {
-        tempL.numberOfScans=-2;
-        return tempL;
-    }
-    if(poslednePoslane>=ktoreMeranie)
-    {
-        tempL.numberOfScans=-1;
-        return tempL;
-    }
+	LaserMeasurement tempL;
+	if (stopMeasurement == 1) {
+		tempL.numberOfScans = -4;
+		return tempL;
+	}
+	if (hCom == -1) {
+		tempL.numberOfScans = -3;
+		return tempL;
+	}
+	if (WasEnabled == 0) {
+		tempL.numberOfScans = -2;
+		return tempL;
+	}
+	if (poslednePoslane >= ktoreMeranie) {
+		tempL.numberOfScans = -1;
+		return tempL;
+	}
 
-    ktorePosielam=kdeJeCele;
-    memcpy(&tempL,&localMeranie[kdeJeCele],sizeof(LaserMeasurement));
-    poslednePoslane=ktoreMeranie;
-    ktorePosielam=-1;
+	ktorePosielam = kdeJeCele;
+	memcpy(&tempL, &localMeranie[kdeJeCele], sizeof(LaserMeasurement));
+	poslednePoslane = ktoreMeranie;
+	ktorePosielam = -1;
 
-    return tempL;
+	return tempL;
 }
 
 int rplidar::measure()
 {
 Start:
-  /*  if(stopMeasurement==1)
+	/*  if(stopMeasurement==1)
         return -1;
     //premazem buffer
     unsigned char requestS[]={0xa5, 0x25};
@@ -374,7 +349,7 @@ Start:
         }
     }
 */
-    return 0;
+	return 0;
 }
 
 #endif

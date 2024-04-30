@@ -27,7 +27,7 @@ FloodPlanner::FloodPlanner(const QString &filename)
 
 QPoint FloodPlanner::toMapCoord(const QPointF &point)
 {
-	auto tmp =  QPointF(point.x(), -point.y()) * 1000. / TILE_SIZE + QPoint(m_map->at(0).size() / 4., m_map->size() / 2.);
+	auto tmp = QPointF(point.x(), -point.y()) * 1000. / TILE_SIZE + QPoint(m_map->at(0).size() / 4., m_map->size() / 2.);
 	return tmp.toPoint();
 }
 
@@ -54,7 +54,7 @@ void FloodPlanner::on_requestPath_plan(const QPointF &start, const QPointF &end)
 
 	if (!isTileValid(*m_map, e)) {
 		qDebug() << "Invalid start or end point";
-		printMapWithPath(QVector<QPoint>{s, e});
+		printMapWithPath(QVector<QPoint> { s, e });
 		return;
 	}
 
@@ -119,8 +119,8 @@ QPoint FloodPlanner::nearestCFreePoint(const QPoint &point, TrajectoryType type)
 
 	auto [dx, dy] = getDirections(type);
 
-	QVector<QPoint> toVisit{point};
-	QSet<QPoint> visited{point};
+	QVector<QPoint> toVisit { point };
+	QSet<QPoint> visited { point };
 
 	while (!toVisit.empty()) {
 		QPoint curr = toVisit.front();
@@ -177,8 +177,8 @@ void FloodPlanner::markTiles(Map &map, const QPoint &start, const QPoint &end, T
 {
 	auto [dx, dy] = getDirections(type);
 
-	QVector<QPoint> toVisit{start};
-	QSet<QPoint> visited{start};
+	QVector<QPoint> toVisit { start };
+	QSet<QPoint> visited { start };
 
 	while (!toVisit.empty()) {
 		QPoint curr = toVisit.front();
@@ -207,7 +207,7 @@ QVector<QPointF> FloodPlanner::planPath(const QPoint &start, const QPoint &end, 
 	auto e = nearestCFreePoint(end, type);
 
 	std::cout << "Cfree:\n";
-	printMapWithPath(QVector<QPoint>{s, e});
+	printMapWithPath(QVector<QPoint> { s, e });
 
 	markTiles(map, e, s, type);
 
@@ -225,7 +225,7 @@ QVector<QPointF> FloodPlanner::planPath(const QPoint &start, const QPoint &end, 
 
 	path.push_front(start);
 	auto pathF = prunePath(path);
-	
+
 	qDebug() << pathF;
 
 	return pathF;
@@ -242,18 +242,12 @@ QVector<QPoint> FloodPlanner::pathFromMap(Map &map, const QPoint &start, const Q
 		map[start.y()][start.x()] = maxFromNeighbours(map, start);
 	}
 
-	while (curr != end)
-	{
-		QPair<QPoint, int> lowest = {curr, map[curr.y()][curr.x()]};
-		for (size_t i = 0; i < dx.size(); i++)
-		{
+	while (curr != end) {
+		QPair<QPoint, int> lowest = { curr, map[curr.y()][curr.x()] };
+		for (size_t i = 0; i < dx.size(); i++) {
 			QPoint next = curr + QPoint(dx[i], dy[i]);
-			if (isTileValid(map, next)
-				&& !isTileObstacle(map, next)
-				&& lowest.second > map[next.y()][next.x()]
-				&& lowest.second - map[next.y()][next.x()] < 3)
-			{
-				lowest = {next, map[next.y()][next.x()]};
+			if (isTileValid(map, next) && !isTileObstacle(map, next) && lowest.second > map[next.y()][next.x()] && lowest.second - map[next.y()][next.x()] < 3) {
+				lowest = { next, map[next.y()][next.x()] };
 			}
 		}
 
@@ -270,19 +264,19 @@ QVector<QPoint> FloodPlanner::pathFromMap(Map &map, const QPoint &start, const Q
 QVector<QPointF> FloodPlanner::prunePath(const QVector<QPoint> &path)
 {
 	auto curr = path.begin();
-	auto next = path.begin()+1;
-	QPoint lastDiff = {next->x() - curr->x(), next->y() - curr->y()};
+	auto next = path.begin() + 1;
+	QPoint lastDiff = { next->x() - curr->x(), next->y() - curr->y() };
 
 	QVector<QPoint> output;
 
 	while (next != path.end()) {
-		QPoint diff = {next->x() - curr->x(), next->y() - curr->y()};
+		QPoint diff = { next->x() - curr->x(), next->y() - curr->y() };
 
 		if (diff != lastDiff) {
 			output.push_back(*curr);
 			lastDiff = diff;
 		}
-		
+
 		curr = next;
 		next++;
 	}
@@ -290,13 +284,13 @@ QVector<QPointF> FloodPlanner::prunePath(const QVector<QPoint> &path)
 	qDebug() << "Points: " << output;
 
 	for (size_t i = 0; i < output.length() - 1; i++) {
-		QPoint distance = output[i+1] - output[i];
-		if (distance == QPoint(1,0) || distance == QPoint(0, 1)) {
+		QPoint distance = output[i + 1] - output[i];
+		if (distance == QPoint(1, 0) || distance == QPoint(0, 1)) {
 			output.remove(i);
 		}
 	}
 
-	if (output[0] - output[1] == QPoint(1,0) || output[0] - output[1] == QPoint(0, 1)) {
+	if (output[0] - output[1] == QPoint(1, 0) || output[0] - output[1] == QPoint(0, 1)) {
 		output.remove(1);
 	}
 	output.remove(0);
@@ -322,7 +316,7 @@ QVector<QPoint> FloodPlanner::generatePoints(const QPointF &start, const QPointF
 
 	double step = (end - start).x() / samples;
 	if (step == 0) {
-		return QVector<QPoint>{ toMapCoord(end) };
+		return QVector<QPoint> { toMapCoord(end) };
 	}
 	else if (std::abs(step) < 0.1) {
 		step = (end - start).x() / 2.;
@@ -336,7 +330,7 @@ QVector<QPoint> FloodPlanner::generatePoints(const QPointF &start, const QPointF
 	while (mid != end) {
 		points.push_back(toMapCoord(mid));
 		qDebug() << "mid: " << mid;
-		mid = {mid.x() + step, line.x() * (mid.x()+step) + line.y()};
+		mid = { mid.x() + step, line.x() * (mid.x() + step) + line.y() };
 	}
 
 	points.push_back(toMapCoord(end));
@@ -392,12 +386,12 @@ QPair<QVector<int>, QVector<int>> FloodPlanner::getDirections(TrajectoryType typ
 	// (-1, 1) | (0,  1) | (1, 1)
 	QPair<QVector<int>, QVector<int>> dirs;
 	if (type == TrajectoryType::Manhattan) {
-		dirs.first =  { 0, 1, 0, -1};
-		dirs.second = {-1, 0, 1,  0};
+		dirs.first = { 0, 1, 0, -1 };
+		dirs.second = { -1, 0, 1, 0 };
 	}
 	else {
-		dirs.first =  { 0, 1, 1, 1, 0,-1,-1,-1};
-		dirs.second = {-1,-1, 0, 1, 1, 1, 0,-1};
+		dirs.first = { 0, 1, 1, 1, 0, -1, -1, -1 };
+		dirs.second = { -1, -1, 0, 1, 1, 1, 0, -1 };
 	}
 
 	return dirs;
@@ -458,4 +452,3 @@ std::ostream &operator<<(std::ostream &os, const FloodPlanner::Map &map)
 	}
 	return os;
 }
-

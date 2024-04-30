@@ -13,7 +13,7 @@ LidarMapper::LidarMapper(QWidget *parent)
 	ui.setupUi(this);
 
 	m_rect = ui.frame->geometry(); //ziskate porametre stvorca,do ktoreho chcete kreslit
-	// m_rect.translate(0, 15);
+								   // m_rect.translate(0, 15);
 }
 
 void LidarMapper::paintEvent(QPaintEvent *event)
@@ -55,7 +55,7 @@ bool LidarMapper::isInsertable(const QPointF &point)
 		return false;
 	}
 
-	for(const auto &p : m_points) {
+	for (const auto &p : m_points) {
 		if (std::abs(std::sqrt(std::pow(p.x() - point.x(), 2) + std::pow(p.y() - point.y(), 2))) < POINT_RADIUS) {
 			return false;
 		}
@@ -63,4 +63,3 @@ bool LidarMapper::isInsertable(const QPointF &point)
 
 	return true;
 }
-

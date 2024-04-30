@@ -4,43 +4,42 @@
 
 typedef struct
 {
+	double x;
+	double y;
 
-    double x;
-    double y;
+} Point;
 
-}Point;
-
-typedef union{
-    Point point;
-    double suradnice[2];
-}TMapPoint;
-
-typedef struct
-{
-    int numofpoints;
-    std::vector<TMapPoint> points;
-}TMapObject;
+typedef union {
+	Point point;
+	double suradnice[2];
+} TMapPoint;
 
 typedef struct
 {
-   TMapObject wall;
-   int numofObjects;
-   std::vector<TMapObject> obstacle;
-}TMapArea;
+	int numofpoints;
+	std::vector<TMapPoint> points;
+} TMapObject;
+
+typedef struct
+{
+	TMapObject wall;
+	int numofObjects;
+	std::vector<TMapObject> obstacle;
+} TMapArea;
 
 
 class map_loader
 {
 public:
-    map_loader();
-    double minX;
-    double maxX;
-    double minY;
-    double maxY;
-    void load_map(const char filename[],TMapArea &mapss);
+	map_loader();
+	double minX;
+	double maxX;
+	double minY;
+	double maxY;
+	void load_map(const char filename[], TMapArea &mapss);
 
-    void addRandomHexagon(double x, double y,TMapArea &mapss);
-    void updateRandomHexagon(double x,double y,TMapArea &mapss);
+	void addRandomHexagon(double x, double y, TMapArea &mapss);
+	void updateRandomHexagon(double x, double y, TMapArea &mapss);
 };
 
 #endif // MAP_LOADER_H

@@ -18,14 +18,10 @@ class RobotTrajectoryController : public QObject
 	Q_OBJECT
 
 public:
-	enum class MovementType {
-		None,
-		Forward,
-		Rotation,
-		Arc
-	};
+	enum class MovementType { None, Forward, Rotation, Arc };
 
-	QString movementTypeToString(MovementType type) {
+	QString movementTypeToString(MovementType type)
+	{
 		switch (type) {
 		case MovementType::None:
 			return "None";
@@ -74,7 +70,8 @@ public slots:
 	void on_lidarDataReady_map(LaserMeasurement laserData);
 	void on_appendTransitionPoints_append(QVector<QPointF> points);
 
-public: signals:
+public:
+signals:
 	void pointCloudCaluculated(QVector<QPointF> points);
 
 private:

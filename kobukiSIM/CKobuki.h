@@ -12,7 +12,7 @@
 ////*************************************************************************************
 #ifndef KOBUKI_CLASS_123456789
 #define KOBUKI_CLASS_123456789
-#define PI          3.141592653589793238462643383279502884L /* pi */
+#define PI 3.141592653589793238462643383279502884L /* pi */
 #define MS_INSTRUCTION_DELAY 25
 
 #include <stdio.h>
@@ -32,17 +32,15 @@
 #include <sstream>
 
 
-
 using namespace std;
 
 typedef struct
 {
-	
 	unsigned short x;
 	unsigned short y;
 	unsigned short z;
 
-}TRawGyroData;
+} TRawGyroData;
 typedef struct
 {
 	//Hardware Version
@@ -63,7 +61,7 @@ typedef struct
 	unsigned int PIDgainP;
 	unsigned int PIDgainI;
 	unsigned int PIDgainD;
-}TExtraRequestData;
+} TExtraRequestData;
 
 typedef struct
 {
@@ -78,15 +76,15 @@ typedef struct
 	bool CliffCenter;
 	bool CliffRight;
 	// padnutie kolies
-	bool WheelDropLeft;  
-	bool WheelDropRight; 
+	bool WheelDropLeft;
+	bool WheelDropRight;
 	//tocenie kolies
 	unsigned short EncoderRight;
 	unsigned short EncoderLeft;
 	unsigned char PWMright;
 	unsigned char PWMleft;
 	//gombiky
-	unsigned char ButtonPress;// 0 nie, 1 2 4 pre button 0 1 2 (7 je ze vsetky tri)
+	unsigned char ButtonPress; // 0 nie, 1 2 4 pre button 0 1 2 (7 je ze vsetky tri)
 	//napajanie
 	unsigned char Charger;
 	unsigned char Battery;
@@ -116,55 +114,42 @@ typedef struct
 	unsigned short analogInputCh3;
 	//---struktura s datami ktore sa nam tam objavia iba na poziadanie
 	TExtraRequestData extraInfo;
-}TKobukiData;
+} TKobukiData;
 
 
-typedef long(*src_callback_kobuki_data) (void *user_data, TKobukiData &Kobuki_data);
+typedef long (*src_callback_kobuki_data)(void *user_data, TKobukiData &Kobuki_data);
 
 class CKobuki
 {
 public:
-	CKobuki() { 
-
-		std::cout << "kobuki instantiated" << std::endl;
-
-	};
-	 virtual ~CKobuki() { 
+	CKobuki() { std::cout << "kobuki instantiated" << std::endl; };
+	virtual ~CKobuki() {
 
 	};
-	
 
 
+	std::vector<unsigned char> setLed(int led1 = 0, int led2 = 0); //led1 zelena/cervena 2/1, //led2 zelena/cervena 2/1
+	std::vector<unsigned char> setTranslationSpeed(int mmpersec);
+	std::vector<unsigned char> setRotationSpeed(double radpersec);
+	std::vector<unsigned char> setArcSpeed(int mmpersec, int radius);
+	std::vector<unsigned char> setSound(int noteinHz, int duration);
 
+	std::vector<unsigned char> setDefaultPID();
 
-    std::vector<unsigned char> setLed(int led1 = 0, int led2 = 0); //led1 zelena/cervena 2/1, //led2 zelena/cervena 2/1
-    std::vector<unsigned char> setTranslationSpeed(int mmpersec);
-    std::vector<unsigned char> setRotationSpeed(double radpersec);
-    std::vector<unsigned char> setArcSpeed(int mmpersec,int radius);
-    std::vector<unsigned char> setSound(int noteinHz, int duration);
-
-    std::vector<unsigned char> setDefaultPID();
-
-    int fillData(TKobukiData &output,unsigned char *message)
-    {
-        return parseKobukiMessage(output,message);
-    }
+	int fillData(TKobukiData &output, unsigned char *message) { return parseKobukiMessage(output, message); }
 
 
 private:
+	int parseKobukiMessage(TKobukiData &output, unsigned char *data);
 
-    int parseKobukiMessage(TKobukiData &output, unsigned char *data );
+	int checkChecksum(unsigned char *data);
 
-    int checkChecksum(unsigned char *data);
-	
 	//--spustenie merania v novom vlakne (vycitavanie bezi v novom vlakne. treba ho stopnut ak chceme poslat request)
 
 public:
 	long double tickToMeter = 0.000085292090497737556558; // [m/tick]
 	long double b = 0.23; // wheelbase distance in meters, from kobuki manual https://yujinrobot.github.io/kobuki/doxygen/enAppendixProtocolSpecification.html
-//
-
-
+	//
 };
 
 #endif
