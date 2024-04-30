@@ -412,7 +412,34 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 	m_fileWriteCounter++;
 }
 
-void RobotTrajectoryController::on_appendTransitionPoints_append(QVector<QPointF> points)
+bool RobotTrajectoryController::isDistanceToWallLessThen(const LaserMeasurement &laserData, float dist)
+{
+	for (int i = 0; i < laserData.numberOfScans; ++i){
+		if((laserData.Data[i].scanDistance / 1000.0) < dist
+			&& (laserData.Data[i].scanDistance > 0)
+			&& (laserData.Data[i].scanAngle < 30
+			||  laserData.Data[i].scanAngle > 330)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void RobotTrajectoryController::updateLidarData(LaserMeasurement laserData)
+{
+	m_lidarData = laserData;
+
+	if (m_points.isEmpty()) {
+		return;
+	}
+
+	qDebug() << "Checking for obstacles";
+	if (isDistanceToWallLessThen(laserData, 0.2)) {
+		emit requestObstacleAvoidance(m_points.first());
+	}
+}
+
+void RobotTrajectoryController::on_appendTransitionPoints_append(const QVector<QPointF> &points)
 {
 	for (auto rbegin = points.rbegin(); rbegin != points.rend(); rbegin++) {
 		m_points.push_front(*rbegin);

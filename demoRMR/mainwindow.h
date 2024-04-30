@@ -127,6 +127,7 @@ public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);
 	void timeout();
 	void handlePath(QVector<QPointF> path);
+	void obstacleAvoidanceOnce(const QPointF &target);
 
 private:
 signals:
@@ -144,6 +145,7 @@ signals:
 	void linResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 	void arcResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 	void lidarDataReady(LaserMeasurement laserData);
+	void appenTransitionPoints(const QVector<QPointF> &points);
 
 private:
 	bool useCamera1;

@@ -68,11 +68,14 @@ public slots:
 	void on_requestArc_move(double distance, double rotation);
 
 	void on_lidarDataReady_map(LaserMeasurement laserData);
-	void on_appendTransitionPoints_append(QVector<QPointF> points);
+	bool isDistanceToWallLessThen(const LaserMeasurement &laserData, float dist);
+	void updateLidarData(LaserMeasurement laserData);
+	void on_appendTransitionPoints_append(const QVector<QPointF> &points);
 
 public:
 signals:
 	void pointCloudCaluculated(QVector<QPointF> points);
+	void requestObstacleAvoidance(const QPointF &point);
 
 private:
 signals:
@@ -110,6 +113,7 @@ private:
 	int m_fileWriteCounter;
 	bool m_arcExpected;
 	Map m_map;
+	LaserMeasurement m_lidarData;
 };
 
 std::ostream &operator<<(std::ostream &os, const RobotTrajectoryController::Map &map);

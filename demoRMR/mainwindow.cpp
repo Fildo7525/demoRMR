@@ -82,8 +82,11 @@ MainWindow::MainWindow(QWidget *parent)
 
 	connect(this, &MainWindow::linResultsReady, m_trajectoryController.get(), &RobotTrajectoryController::handleLinResults, Qt::QueuedConnection);
 	connect(this, &MainWindow::arcResultsReady, m_trajectoryController.get(), &RobotTrajectoryController::handleArcResults, Qt::QueuedConnection);
+	connect(m_trajectoryController.get(), &RobotTrajectoryController::requestObstacleAvoidance, this, &MainWindow::obstacleAvoidanceOnce, Qt::QueuedConnection);
+	connect(this, &MainWindow::appenTransitionPoints, m_trajectoryController.get(), &RobotTrajectoryController::on_appendTransitionPoints_append, Qt::QueuedConnection);
 
 	connect(this, &MainWindow::lidarDataReady, m_trajectoryController.get(), &RobotTrajectoryController::on_lidarDataReady_map, Qt::QueuedConnection);
+	connect(this, &MainWindow::lidarDataReady, m_trajectoryController.get(), &RobotTrajectoryController::updateLidarData, Qt::QueuedConnection);
 	connect(this, &MainWindow::requestPath, m_floodPlanner.get(), &FloodPlanner::on_requestPath_plan, Qt::QueuedConnection);
 	connect(m_floodPlanner.get(), &FloodPlanner::pathPlanned, this, &MainWindow::handlePath, Qt::QueuedConnection);
 
@@ -169,8 +172,7 @@ int MainWindow::processThisLidar(LaserMeasurement laserData)
 	update(); //tento prikaz prinuti prekreslit obrazovku.. zavola sa paintEvent funkcia
 
 	// qDebug() << "m_x: " << m_x << " m_y: " << m_y << " m_fi: " << m_fi;
-	emit lidarDataReady(std::move(copyOfLaserData));
-
+	emit lidarDataReady(copyOfLaserData);
 	return 0;
 }
 
@@ -572,6 +574,20 @@ void MainWindow::handlePath(QVector<QPointF> path)
 	auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
 
 	emit arcResultsReady(distance, angle, path);
+}
+
+void MainWindow::obstacleAvoidanceOnce(const QPointF &target)
+{
+	qDebug() << "Obstacle avoidance activated with target: " << target;
+	autoModeTarget_X = target.x();
+	autoModeTarget_Y = target.y();
+	analyseCorners(copyOfLaserData, m_x, m_y);
+	if(cornersAvailable > 0){
+		findCornerWithShortestPath();
+		QVector<QPointF> points = { cornerWithShortestPath.cornerApproachPoint, cornerWithShortestPath.cornerBypassPoint };
+		qDebug() << "Approaching corner: " << cornerWithShortestPath.cornerApproachPoint << " Bypassing corner: " << cornerWithShortestPath.cornerBypassPoint;
+		emit appenTransitionPoints(points);
+	}
 }
 
 
