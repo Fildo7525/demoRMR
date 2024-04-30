@@ -755,6 +755,7 @@ double MainWindow::getRegulationError(){
 	double sideDist = 0.0;
 	double sideDistLast = 0.0;
 	double sideDistNext = 0.0;
+	double sideFrontDist = 0.0;
 	double frontDist = 0.0;
 	double PID_P = 10.0;
 	double sat = 3.14;
@@ -771,23 +772,43 @@ double MainWindow::getRegulationError(){
 			sideDistNext = sideDistNext / 1000.0;
 			sideDistNext = sideDistNext / 3.0;
 		}
+		if(copyOfLaserData.Data[i].scanAngle < 66.0 && copyOfLaserData.Data[i].scanAngle > 62.0){
+			sideFrontDist = copyOfLaserData.Data[i].scanDistance / 1000.0;
+		}
 		if(copyOfLaserData.Data[i].scanAngle < 2.0 || copyOfLaserData.Data[i].scanAngle > 358.0){
 //			std::cout << copyOfLaserData.Data[i].scanAngle << " " << copyOfLaserData.Data[i].scanDistance << std::endl;
 			frontDist = copyOfLaserData.Data[i].scanDistance / 1000.0;
 		}
-
+	}
+	int count = 0;
+	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i){
+		if(copyOfLaserData.Data[i].scanAngle < 150.0 && copyOfLaserData.Data[i].scanAngle > 30.0){
+			if(copyOfLaserData.Data[i].scanDistance < 0.7 && copyOfLaserData.Data[i].scanDistance > 0.0){
+				count++;
+			}
+		}
+	}
+	if(count <= 3 && count >= 1){
+		sideFrontDist = 0.0; // 180 deg corner
 	}
 
-	if(sideDist > sideDistLast){
-		error = error + abs(sideDist - sideDistLast);
+	if(sideFrontDist > 1.2){
+		error = error +( (-1) * (0.01*(sideFrontDist + 1.2)) );
 	}
-	else if(sideDist > sideDistNext){
-		error = error +( (-1) * abs(sideDist - sideDistNext) );
-	}
-	if(frontDist < 1.0 && frontDist > 0.0){
-		std::cout << frontDist << std::endl;
+	else if(frontDist < 1.0 && frontDist > 0.0){
+//		std::cout << frontDist << std::endl;
 		error = error + 0.5*(1.0 - frontDist) ;
 	}
+	else if(sideDist > sideDistLast){
+		error = error + ((3) * abs(sideDist - sideDistLast));
+	}
+	else if(sideDist > sideDistNext){
+		error = error + ((3) * ( (-1) * abs(sideDist - sideDistNext) ));
+	}
+	else if(sideDist < sideDistLast && sideDist < sideDistNext){
+		error = -0.3 * (sideDist-0.4);
+	}
+
 
 
 	error = error * PID_P;
