@@ -60,7 +60,7 @@ MainWindow::MainWindow(QWidget *parent)
 	// Object for managing the robot speed interactions.
 	m_trajectoryController = std::make_shared<RobotTrajectoryController>(&robot, this);
 
-	m_floodPlanner = std::make_shared<FloodPlanner>("map.txt");
+	m_floodPlanner = std::make_shared<FloodPlanner>(MAP_PATH);
 
 	// Creating all connections
 	connect(this, &MainWindow::moveForward, m_trajectoryController.get(), &RobotTrajectoryController::onMoveForwardMove, Qt::QueuedConnection);

@@ -218,7 +218,10 @@ void RobotTrajectoryController::on_accelerationTimerTimeout_control()
 	}
 
 	static auto limit = [] (double &speed, const double target, double rate) {
-		if (speed + rate > target) {
+		if (speed > 0 && target < 0) {
+			speed += rate;
+		}
+		else if (std::abs(speed + rate) > std::abs(target)) {
 			speed = target;
 		}
 		else {
@@ -375,17 +378,17 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 	}
 
 	for (size_t i = 0; i < numberOfScans; i += 2) {
-		double distance = laserData.Data[i].scanDistance / 20.;
+		double distance = laserData.Data[i].scanDistance;
 		double scanAngle = (360 - laserData.Data[i].scanAngle + 90) * TO_RADIANS;
 
 		if (distance < m_robot->b) {
 			continue;
 		}
 
-		double x = robotX / 20. + distance * std::sin(scanAngle + robotAngle);
-		double y = robotY / 20. + distance * std::cos(scanAngle + robotAngle);
+		double x = robotX + distance * std::sin(scanAngle + robotAngle);
+		double y = robotY + distance * std::cos(scanAngle + robotAngle);
 
-		points.append(QPointF(x, y));
+		points.append(QPointF(x, y) / 20);
 
 		x /= TILE_SIZE;
 		y /= TILE_SIZE;
