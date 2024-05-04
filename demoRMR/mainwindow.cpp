@@ -759,6 +759,7 @@ double MainWindow::getRegulationError(){
 	double frontDist = 0.0;
 	double PID_P = 10.0;
 	double sat = 3.14;
+	double minDist = 2000.0;
 
 	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i){
 		if(copyOfLaserData.Data[i].scanAngle < 92.0 && copyOfLaserData.Data[i].scanAngle > 88.0){
@@ -779,24 +780,21 @@ double MainWindow::getRegulationError(){
 //			std::cout << copyOfLaserData.Data[i].scanAngle << " " << copyOfLaserData.Data[i].scanDistance << std::endl;
 			frontDist = copyOfLaserData.Data[i].scanDistance / 1000.0;
 		}
-	}
-	int count = 0;
-	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i){
-		if(copyOfLaserData.Data[i].scanAngle < 150.0 && copyOfLaserData.Data[i].scanAngle > 30.0){
-			if(copyOfLaserData.Data[i].scanDistance < 0.7 && copyOfLaserData.Data[i].scanDistance > 0.0){
-				count++;
+		if(copyOfLaserData.Data[i].scanAngle < 30.0 || copyOfLaserData.Data[i].scanAngle > 330.0){
+			if(copyOfLaserData.Data[i].scanDistance < minDist && copyOfLaserData.Data[i].scanDistance > 0.0){
+				minDist = copyOfLaserData.Data[i].scanDistance;
 			}
 		}
 	}
-	if(count <= 3 && count >= 1){
-		sideFrontDist = 0.0; // 180 deg corner
-	}
 
-	if(sideFrontDist > 1.2){
+	if(minDist/1000.0 < 0.4){
+		error = 1;
+		std::cout<<"too close"<<std::endl;
+	}
+	else if(sideFrontDist > 1.2){
 		error = error +( (-1) * (0.01*(sideFrontDist + 1.2)) );
 	}
 	else if(frontDist < 1.0 && frontDist > 0.0){
-//		std::cout << frontDist << std::endl;
 		error = error + 0.5*(1.0 - frontDist) ;
 	}
 	else if(sideDist > sideDistLast){
