@@ -717,7 +717,7 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 				}
 			}
 			else if(regulationOn){
-				speed = 120.0;
+				speed = 220.0;
 
 				rotationSpeed = getRegulationError();
 			}
