@@ -160,11 +160,11 @@ void MainWindow::paintEvent(QPaintEvent *event)
 				if (rect.contains(xp, yp)) //ak je bod vo vnutri nasho obdlznika tak iba vtedy budem chciet kreslit
 					painter.drawEllipse(QPoint(xp, yp), 2, 2);
 			}
-			int x1 = rect.width() - (rect.width() / 2 + m_cornerOne.x()/200 * 2 * sin((360.0 - m_cornerOne.y()) * 3.14159 / 180.0)) + rect.topLeft().x();
-			int x2 = rect.width() - (rect.width() / 2 + m_cornerTwo.x()/200 * 2 * sin((360.0 - m_cornerTwo.y()) * 3.14159 / 180.0)) + rect.topLeft().x();
+			int x1 = rect.width() - (rect.width() / 2 + m_cornerOne.x()/20 * 2 * sin((360.0 - m_cornerOne.y()) * 3.14159 / 180.0)) + rect.topLeft().x();
+			int x2 = rect.width() - (rect.width() / 2 + m_cornerTwo.x()/20 * 2 * sin((360.0 - m_cornerTwo.y()) * 3.14159 / 180.0)) + rect.topLeft().x();
 
-			int y1 = rect.width() - (rect.width() / 2 + m_cornerOne.y()/200 * 2 * sin((360.0 - m_cornerOne.y()) * 3.14159 / 180.0)) + rect.topLeft().x();
-			int y2 = rect.width() - (rect.width() / 2 + m_cornerTwo.y()/200 * 2 * sin((360.0 - m_cornerTwo.y()) * 3.14159 / 180.0)) + rect.topLeft().x();
+			int y1 = rect.height() - (rect.height() / 2 + m_cornerOne.x()/20 * 2 * cos((360.0 - m_cornerOne.y()) * 3.14159 / 180.0)) + rect.topLeft().y();
+			int y2 = rect.height() - (rect.height() / 2 + m_cornerTwo.x()/20 * 2 * cos((360.0 - m_cornerTwo.y()) * 3.14159 / 180.0)) + rect.topLeft().y();
 
 			if (m_cornerOne.x() != 0 && m_cornerOne.y() != 0 && m_cornerTwo.x() != 0 && m_cornerTwo.y() != 0) {
 				if (lastOne != m_cornerOne || lastTwo != m_cornerTwo) {
@@ -177,10 +177,12 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
 			pero.setColor(Qt::red);
 			painter.setPen(pero);
-			if (rect.contains(x1, y1)) //ak je bod vo vnutri nasho obdlznika tak iba vtedy budem chciet kreslit
-				painter.drawEllipse(QPoint(x1, y1), 5, 5);
+			// if (rect.contains(x1, y1)) //ak je bod vo vnutri nasho obdlznika tak iba vtedy budem chciet kreslit
+				painter.drawEllipse(QPoint(x1, y1), 2, 5);
+			pero.setColor(Qt::yellow);
+			painter.setPen(pero);
 			// if (rect.contains(x2, y2)) //ak je bod vo vnutri nasho obdlznika tak iba vtedy budem chciet kreslit
-				painter.drawEllipse(QPoint(x2, y2), 5, 5);
+				painter.drawEllipse(QPoint(x2, y2), 5, 2);
 		}
 	}
 }
