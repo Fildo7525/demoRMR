@@ -591,15 +591,16 @@ void MainWindow::obstacleAvoidanceOnce(const QPointF &target)
 		QPointF approach = cornerWithShortestPath.cornerApproachPoint;
 		QPointF transitionPoint{ (m_x + approach.x())/2., (m_y + approach.y())/2. };
 		QPointF line = computeLineParameters({m_x, m_y}, target);
-		QPointF bypassLinePoint = computeSecondPoint(line.x(),line.y(),m_x,m_y,2);
+		QPointF bypassLinePoint = computeSecondPoint(line.x(),line.y(),m_x,m_y,1.5,target);
 
-		QVector<QPointF> points = { transitionPoint, approach, cornerWithShortestPath.cornerBypassPoint ,bypassLinePoint };
-		qDebug() << "Approaching corner: " << cornerWithShortestPath.cornerApproachPoint << " Bypassing corner: " << bypassLinePoint;
+		QVector<QPointF> points = {  approach, cornerWithShortestPath.cornerBypassPoint ,bypassLinePoint };
+//		qDebug() << "Approaching corner: " << cornerWithShortestPath.cornerApproachPoint << " Bypassing corner: " << bypassLinePoint;
+		qDebug() << points;
 		emit appendTransitionPoints(points);
 	}
 }
 
-QPointF MainWindow::computeSecondPoint(double a, double b, double m_x, double m_y, double distance) {
+QPointF MainWindow::computeSecondPoint(double a, double b, double m_x, double m_y, double distance, QPointF targetPoint) {
 	// Compute distance from (m_x, m_y) to the second point along the line
 	double dx = distance / sqrt(1 + a * a);
 	double dy = a * dx;
@@ -611,11 +612,30 @@ QPointF MainWindow::computeSecondPoint(double a, double b, double m_x, double m_
 	}
 
 	// Compute the coordinates of the second point
-	QPointF secondPoint;
-	secondPoint.setX(m_x + dx);
-	secondPoint.setY(m_y + dy);
+	QPointF secondPointA;
+	secondPointA.setX(m_x + dx);
+	secondPointA.setY(m_y + dy);
 
-	return secondPoint;
+	dx = (-distance) / sqrt(1 + a * a);
+	dy = a * dx;
+
+	// Compute the direction of the vector (dx, dy) based on the sign of 'a'
+	if (a < 0) {
+		dx *= -1;
+		dy *= -1;
+	}
+
+	// Compute the coordinates of the second point
+	QPointF secondPointB;
+	secondPointB.setX(m_x + dx);
+	secondPointB.setY(m_y + dy);
+
+	if(computeDistancePoints(secondPointA,targetPoint) < computeDistancePoints(secondPointB,targetPoint)){
+		return secondPointA;
+	}
+	else{
+		return secondPointB;
+	}
 }
 
 void MainWindow::onLiveAvoidObstaclesButton_clicked(bool clicked)
@@ -955,10 +975,10 @@ void MainWindow::analyseCorners(LaserMeasurement &laserData, double actual_X, do
 				// too short path
 				continue;
 			}
-			if ((abs(actual_X - thisObstacleCorner.cornerApproachPoint.x()) < 0.12) && (abs(actual_Y - thisObstacleCorner.cornerApproachPoint.y()) < 0.12)) {
-				// same point as robot
-				continue;
-			}
+//			if ((abs(actual_X - thisObstacleCorner.cornerApproachPoint.x()) < 0.12) && (abs(actual_Y - thisObstacleCorner.cornerApproachPoint.y()) < 0.12)) {
+//				// same point as robot
+//				continue;
+//			}
 			if (wasCornerVisited(thisObstacleCorner)) {
 				continue;
 			}

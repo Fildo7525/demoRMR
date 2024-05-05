@@ -132,22 +132,22 @@ void map_loader::addRandomHexagon(double x, double y, TMapArea &mapss)
 		TMapPoint temp;
 
 		temp.point.x = 0 + randPositionX;
-		temp.point.y = -20 + randPositionY;
+		temp.point.y = 0 + randPositionY;
 		tempObstacle.points.push_back(temp);
-		temp.point.x = 17.32 + randPositionX;
-		temp.point.y = -10 + randPositionY;
+//		temp.point.x = 17.32 + randPositionX;
+//		temp.point.y = -10 + randPositionY;
+//		tempObstacle.points.push_back(temp);
+		temp.point.x = 35 + randPositionX;
+		temp.point.y = 0 + randPositionY;
 		tempObstacle.points.push_back(temp);
-		temp.point.x = 17.32 + randPositionX;
-		temp.point.y = 10 + randPositionY;
+		temp.point.x = 35 + randPositionX;
+		temp.point.y = 35 + randPositionY;
 		tempObstacle.points.push_back(temp);
+//		temp.point.x = -17.32 + randPositionX;
+//		temp.point.y = 10 + randPositionY;
+//		tempObstacle.points.push_back(temp);
 		temp.point.x = 0 + randPositionX;
-		temp.point.y = 20 + randPositionY;
-		tempObstacle.points.push_back(temp);
-		temp.point.x = -17.32 + randPositionX;
-		temp.point.y = 10 + randPositionY;
-		tempObstacle.points.push_back(temp);
-		temp.point.x = -17.32 + randPositionX;
-		temp.point.y = -10 + randPositionY;
+		temp.point.y = 35 + randPositionY;
 		tempObstacle.points.push_back(temp);
 	}
 
