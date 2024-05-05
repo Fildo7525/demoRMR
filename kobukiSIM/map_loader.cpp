@@ -23,14 +23,14 @@ void map_loader::load_map(const char filename[], TMapArea &mapss)
 	//tu nacitame obvodovu stenu
 	char myLine[550];
 	fgets(myLine, 550, fp);
-	printf("%s\n", myLine);
+	// printf("%s\n", myLine);
 	char *myCopy = (char *)calloc(strlen(myLine) + 2, sizeof(char));
 	memcpy(myCopy, myLine, sizeof(char) * strlen(myLine));
 	char *freeMyCopy;
 	freeMyCopy = myCopy;
 	myCopy = strtok(myCopy, "[]");
 	mapss.wall.numofpoints = (atoi(myCopy));
-	printf("num of points %i\n", mapss.wall.numofpoints);
+	// printf("num of points %i\n", mapss.wall.numofpoints);
 	mapss.wall.points.reserve(mapss.wall.numofpoints);
 	for (int i = 0; i < mapss.wall.numofpoints; i++) {
 		TMapPoint temp;
@@ -54,7 +54,7 @@ void map_loader::load_map(const char filename[], TMapArea &mapss)
 	mapss.numofObjects = 0;
 	mapss.obstacle.clear();
 	while (fgets(myLine, 550, fp)) {
-		printf("%s\n", myLine);
+		// printf("%s\n", myLine);
 		myCopy = (char *)calloc(strlen(myLine) + 2, sizeof(char));
 		memcpy(myCopy, myLine, sizeof(char) * strlen(myLine));
 

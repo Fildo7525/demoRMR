@@ -77,7 +77,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 	sphere_x = -1; //mapload.minX + (float)(static_cast <float> (rand()) /( static_cast <float> (RAND_MAX)))*(mapload.maxX-mapload.minX);;
 	sphere_y = -1; //mapload.minY + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(mapload.maxY-mapload.minY)));;
-	std::cout << "gula " << sphere_x << " " << sphere_y << std::endl;
+	// std::cout << "gula " << sphere_x << " " << sphere_y << std::endl;
+	on_pushButton_3_clicked();
 }
 
 void MainWindow::sendImageToWeb()
@@ -88,7 +89,7 @@ void MainWindow::sendImageToWeb()
 			return;
 		// Send Image
 
-		std::cout << "pisem na web" << std::endl;
+		// std::cout << "pisem na web" << std::endl;
 		std::vector<uchar> buff;
 		imencode(".jpg", frame, buff);
 		std::string content(buff.begin(), buff.end());
@@ -119,7 +120,7 @@ void MainWindow::TcpHttpconnected()
 
 void MainWindow::TcpHttpreadyRead()
 {
-	std::cout << "akceptujem klienta" << std::endl;
+	// std::cout << "akceptujem klienta" << std::endl;
 	m_TcpHttpClient->readAll(); // Discard "Get Request String"
 
 	QByteArray ContentType = ("HTTP/1.0 200 OK\r\n"
@@ -137,7 +138,7 @@ void MainWindow::TcpHttpreadyRead()
 
 	while (1) {
 		if (readyFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-			std::cout << "uz nieje klient" << std::endl;
+			// std::cout << "uz nieje klient" << std::endl;
 			m_TcpHttpClient->disconnect(); //Should never be Reached
 			break;
 		}
@@ -173,19 +174,19 @@ void MainWindow::TcpHttpreadyRead()
 			//  QThread::msleep(10);
 		}
 		else {
-			std::cout << "uz nieje klient" << std::endl;
+			// std::cout << "uz nieje klient" << std::endl;
 			m_TcpHttpClient->disconnect(); //Should never be Reached
 			return;
 		}
 	}
 
-	std::cout << "vypina sa tcp image" << std::endl;
+	// std::cout << "vypina sa tcp image" << std::endl;
 	m_TcpHttpClient->disconnect(); //Should never be Reached
 }
 
 MainWindow::~MainWindow()
 {
-	std::cout << "skoncim??" << std::endl;
+	// std::cout << "skoncim??" << std::endl;
 	stopAll = 1;
 	lasersimthreadHandle.join();
 	robotsimthreadHandle.join();
@@ -201,7 +202,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-	std::cout << "skoncim??" << std::endl;
+	// std::cout << "skoncim??" << std::endl;
 	ready_promise.set_value();
 }
 void MainWindow::paintEvent(QPaintEvent *event)
@@ -294,7 +295,7 @@ void MainWindow::laserSimulator()
 	double angle = 0;
 	while (stopAll == 0) {
 		if (stopAll == 1) {
-			std::cout << "mam koniec" << std::endl;
+			// std::cout << "mam koniec" << std::endl;
 			break;
 		}
 		if (readyFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
@@ -494,7 +495,7 @@ void MainWindow::generateAndSentImage()
 	cv::rectangle(frame, cv::Rect(0, 0, imgsirka, imgvyska / 2), cv::Scalar(128, 50, 50), -1);
 	double f = (imgsirka / 2) / tan(camerainf.stopAngle * 3.14159 / 180.0); // polka sirky obrazka, deleno atan polky rozsahu uhla
 	double xfoc = f / (imgsirka / 2);
-	std::cout << "focal je " << f << std::endl;
+	// std::cout << "focal je " << f << std::endl;
 
 	std::vector<int> orgn = getOrganizedObstaclesForImage();
 
@@ -510,7 +511,7 @@ void MainWindow::generateAndSentImage()
 		//      std::cout<<"a "<<x2<<" "<<y2<<std::endl;
 
 
-		std::cout << "sphere angle " << sphere_angl << std::endl;
+		// std::cout << "sphere angle " << sphere_angl << std::endl;
 
 
 		double sphere_xobr = imgsirka / 2 - (sphere_y2 / fabs(sphere_x2)) * f;
@@ -1014,7 +1015,7 @@ void MainWindow::robotSimExec(std::vector<unsigned char> mess)
 		encoderRight += 0.025 * (rspeed / 1000.0) / 0.000085292090497737556558;
 		encrr += 0.025 * (rspeed / 1000.0) / 0.000085292090497737556558;
 	}
-	std::cout << "encoder diff " << encoderLeft << " " << encll << std::endl;
+	// std::cout << "encoder diff " << encoderLeft << " " << encll << std::endl;
 	if (isRobotInCollision(mapa, temp_robot, 20) == false) {
 		encoderLeft = encoderLeft + robotik.encoderLeft;
 		encoderRight = encoderRight + robotik.encoderRight;
@@ -1042,7 +1043,7 @@ void MainWindow::robotSimExec(std::vector<unsigned char> mess)
 			: robotik.encoderLeftA < 0						  ? robotik.encoderLeftA + 65536.0
 															  : robotik.encoderLeftA;
 	}
-	std::cout << robotik.x << " " << robotik.y << " " << robotik.encoderRightA << " " << robotik.encoderLeftA << std::endl;
+	// std::cout << robotik.x << " " << robotik.y << " " << robotik.encoderRightA << " " << robotik.encoderLeftA << std::endl;
 	update();
 }
 
@@ -1088,7 +1089,7 @@ void MainWindow::readPendingPozyxDatagrams()
 			return;
 		char *data = (char *)calloc(sized, sizeof(char));
 		pozyxRecv->readDatagram(data, sized, &pozyxaddress, &pozyxport);
-		std::cout << "dostal som pozyx request" << std::endl;
+		// std::cout << "dostal som pozyx request" << std::endl;
 		hasPozyxAddress = 1;
 		//       processTheDatagram(datagram);
 	}
@@ -1105,7 +1106,7 @@ void MainWindow::readPendingPozyxAlmaDatagrams()
 		char *data = (char *)calloc(sized, sizeof(char));
 		pozyxAlmanachRecv->readDatagram(data, sized, &pozyxalmaaddress, &pozyxalmaport);
 
-		std::cout << "dostal som alma request" << std::endl;
+		// std::cout << "dostal som alma request" << std::endl;
 		hasPozyxAlmaAddress = 1;
 		//       processTheDatagram(datagram);
 	}
@@ -1165,12 +1166,24 @@ void MainWindow::pozyxSimulator()
 
 void MainWindow::on_pushButton_clicked()
 {
-	double randPositionX = mapload.minX + (float)(static_cast<float>(rand()) / (static_cast<float>(RAND_MAX))) * (mapload.maxX - mapload.minX);
-	;
-	double randPositionY = mapload.minY + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (mapload.maxY - mapload.minY)));
-	;
-	mapload.updateRandomHexagon(randPositionX, randPositionY, mapa);
-	update();
+	QStringList pos = ui->lineEdit->text().split(" ");
+	qDebug() << pos;
+
+	QVector< double > vector;
+    for ( const auto& item : pos )
+    {
+        bool ok = true;
+        const double value = item.toDouble( &ok );
+        if ( ok ) {
+            vector << value;
+        }
+        // ... do something if the conversion failes.
+    }
+    // double randPositionX= mapload.minX + (float)(static_cast <float> (rand()) /( static_cast <float> (RAND_MAX)))*(mapload.maxX-mapload.minX);;
+    // double randPositionY= mapload.minY + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(mapload.maxY-mapload.minY)));;
+	qDebug() << vector;
+    mapload.updateRandomHexagon(vector.first(),vector.last(),mapa);
+    update();
 }
 
 
@@ -1214,7 +1227,7 @@ void MainWindow::on_pushButton_3_clicked()
 
 	connect(robotRecv, &QUdpSocket::readyRead, this, &MainWindow::readPendingRoboDatagrams);
 
-	std::cout << "mam spojenie " << lasret << " " << robret << std::endl;
+	// std::cout << "mam spojenie " << lasret << " " << robret << std::endl;
 	pozyxRecv = new QUdpSocket(this);
 	pozyxRecv->bind(QHostAddress::Any, (quint16)(ui->spinBox->value() + 1));
 

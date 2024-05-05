@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>788</width>
-    <height>649</height>
+    <height>665</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -31,6 +31,16 @@
        <widget class="QPushButton" name="pushButton">
         <property name="text">
          <string>Generate lidar object</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="lineEdit">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
        </widget>
       </item>
@@ -149,7 +159,7 @@
      <x>0</x>
      <y>0</y>
      <width>788</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>
