@@ -268,7 +268,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		}
 	}
 
-	if (std::abs(error) < maxCorrection) {
+	if (std::abs(error) < maxCorrection || std::abs(finalDistanceError()) < maxCorrection) {
 		if (m_movementType == MovementType::Rotation && !m_arcExpected) {
 			emit requestMovement(localDistanceError());
 		}
@@ -285,6 +285,10 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 			if (m_points.size() > 1)
 				m_points.removeFirst();
 
+			if (finalDistanceError() < maxCorrection) {
+				on_stoppingTimerTimeout_stop();
+				return;
+			}
 			double rotation = localRotationError();
 			if (rotation > PI / 2 || rotation < -PI / 2) {
 				m_arcExpected = true;
