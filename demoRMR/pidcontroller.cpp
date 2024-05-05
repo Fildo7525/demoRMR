@@ -1,6 +1,6 @@
 #include "pidcontroller.h"
 
-PIDController::PIDController(double p, double i, double d, double target)
+PIDController::PIDController(double p, double i, double d, double target, double min, double max)
 	: m_kp(p)
 	, m_ki(i)
 	, m_kd(d)
@@ -9,6 +9,8 @@ PIDController::PIDController(double p, double i, double d, double target)
 	, m_prev_error(0)
 	, m_clampedOutput(0)
 	, m_virginOutput(0)
+	, m_min(min)
+	, m_max(max)
 {
 }
 
@@ -29,10 +31,10 @@ double PIDController::computeFromError(double error, bool limit)
 
 	if (limit) {
 		if (m_virginOutput < 0) {
-			m_clampedOutput = std::clamp(m_virginOutput, -250., -15.);
+			m_clampedOutput = std::clamp(m_virginOutput, m_min, -15.);
 		}
 		else {
-			m_clampedOutput = std::clamp(m_virginOutput, 15., 250.);
+			m_clampedOutput = std::clamp(m_virginOutput, 15., m_max);
 		}
 	}
 
