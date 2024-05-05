@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <memory>
 
+double lastError = std::numeric_limits<double>::max();
+
 QPointF computeLineParameters(QPointF p1, QPointF p2)
 {
 	QPointF line;
@@ -153,7 +155,7 @@ void RobotTrajectoryController::moveByArcTo(double distance, double rotation)
 	m_accelerationTimer.stop();
 	m_stoppingTimer.stop();
 
-	m_controller = std::make_shared<PIDController>(1000, 0, 0, distance, -500, 500);
+	m_controller = std::make_shared<PIDController>(1000, 0, 0, distance, -300, 300);
 	m_rotationController = std::make_shared<PIDController>(1, 0, 0, rotation);
 
 	m_positionTimer.start();
@@ -268,6 +270,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		}
 	}
 
+	qDebug() << "Error: " << error << " Max correction: " << maxCorrection;
 	if (std::abs(error) < maxCorrection || std::abs(finalDistanceError()) < maxCorrection) {
 		if (m_movementType == MovementType::Rotation && !m_arcExpected) {
 			emit requestMovement(localDistanceError());
@@ -282,6 +285,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 			emit requestRotation(localRotationError());
 		}
 		else if (m_movementType == MovementType::Arc) {
+			qDebug() << "Leading the robot through points: " << m_points;
 			if (m_points.size() > 1)
 				m_points.removeFirst();
 
@@ -289,6 +293,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 				on_stoppingTimerTimeout_stop();
 				return;
 			}
+
 			double rotation = localRotationError();
 			if (rotation > PI / 2 || rotation < -PI / 2) {
 				m_arcExpected = true;
@@ -306,6 +311,10 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 		}
 		return;
 	}
+	if (std::abs(error) > std::abs(lastError) && m_points.size() == 1) {
+		on_stoppingTimerTimeout_stop();
+	}
+	lastError = error;
 
 	double u;
 	if (m_movementType == MovementType::Rotation) {
@@ -416,6 +425,21 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 	m_fileWriteCounter++;
 }
 
+bool RobotTrajectoryController::isDistanceToWallLessThen(const LaserMeasurement &laserData, float dist, int &idx)
+{
+	for (int i = 0; i < laserData.numberOfScans; ++i){
+		auto distance = laserData.Data[i].scanDistance / 1000.0;
+		auto angle = laserData.Data[i].scanAngle;
+		if (angle < 30 || angle > 330) {
+			if ( distance < dist && distance > 0) {
+				idx = i;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 bool RobotTrajectoryController::isDistanceToWallLessThen(const LaserMeasurement &laserData, float dist)
 {
 	for (int i = 0; i < laserData.numberOfScans; ++i){
@@ -432,16 +456,21 @@ bool RobotTrajectoryController::isDistanceToWallLessThen(const LaserMeasurement 
 
 void RobotTrajectoryController::updateLidarData(LaserMeasurement laserData)
 {
-	m_lidarData = std::move(laserData);
-
-	if (m_points.isEmpty()) {
+	if (m_points.size() < 2) {
 		return;
 	}
 
-	if (isDistanceToWallLessThen(laserData, 0.4) && !m_isAvoiding) {
-		qDebug() << "Checking for obstacles";
+	if (!m_positionTimer.isActive()) {
+		return;
+	}
+
+	m_lidarData = std::move(laserData);
+
+	int idx;
+	if (isDistanceToWallLessThen(laserData, 0.4, idx) && !m_isAvoiding) {
 		m_isAvoiding = true;
-		emit requestObstacleAvoidance(m_points.first());
+		qDebug() << "Obstacle detected at " << idx << "th point: Distance: " << m_lidarData.Data[idx].scanDistance / 1000.0 << "m angle: " << m_lidarData.Data[idx].scanAngle;
+		emit requestObstacleAvoidanceI(m_points.first(), idx);
 	}
 }
 
@@ -453,7 +482,7 @@ void RobotTrajectoryController::on_appendTransitionPoints_append(const QVector<Q
 
 	auto [distance, rotation] = qobject_cast<MainWindow *>(m_mainWindow)->calculateTrajectory();
 	handleArcResults(distance, rotation, m_points);
-
+	qDebug() << "Points appended " << m_points;
 	QTimer::singleShot(4'000, this, [this] () {m_isAvoiding = false;});
 }
 

@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "CKobuki.h"
 #include "floodPlanner.h"
 #include <QMainWindow>
 #include <QTimer>
@@ -114,6 +115,7 @@ private slots:
 	void obstacleAvoidanceTrajectoryHandle();
 	bool doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget);
 	void doFinalTransport();
+	QPointF analyseCorners(LaserMeasurement &laserData, const QPointF &actual, int idx, const QPointF &target);
 	void analyseCorners(LaserMeasurement &laserData, double actual_X, double actual_Y);
 	void findCornerWithShortestPath();
 	bool wasCornerVisited(obstacleCorner thisCorner);
@@ -128,6 +130,7 @@ public slots:
 	void timeout();
 	void handlePath(QVector<QPointF> path);
 	void obstacleAvoidanceOnce(const QPointF &target);
+	void obstacleAvoidanceOnceI(const QPointF &target, int idx);
 
 private:
 signals:
@@ -210,6 +213,10 @@ private:
 	bool timerStarted;
 	bool isInitialCornerCheck;
 	bool checkingColision;
+	QPointF m_cornerOne;
+	QPointF m_cornerTwo;
+	double m_cornerOneAngle;
+	double m_cornerTwoAngle;
 };
 
 #endif // MAINWINDOW_H

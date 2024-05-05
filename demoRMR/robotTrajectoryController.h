@@ -77,6 +77,7 @@ public:
 signals:
 	void pointCloudCaluculated(QVector<QPointF> points);
 	void requestObstacleAvoidance(const QPointF &point);
+	void requestObstacleAvoidanceI(const QPointF &point, int idx);
 
 private:
 signals:

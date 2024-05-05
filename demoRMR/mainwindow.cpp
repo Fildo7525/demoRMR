@@ -83,7 +83,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 	connect(this, &MainWindow::linResultsReady, m_trajectoryController.get(), &RobotTrajectoryController::handleLinResults, Qt::QueuedConnection);
 	connect(this, &MainWindow::arcResultsReady, m_trajectoryController.get(), &RobotTrajectoryController::handleArcResults, Qt::QueuedConnection);
-	connect(m_trajectoryController.get(), &RobotTrajectoryController::requestObstacleAvoidance, this, &MainWindow::obstacleAvoidanceOnce, Qt::QueuedConnection);
+	// connect(m_trajectoryController.get(), &RobotTrajectoryController::requestObstacleAvoidance, this, &MainWindow::obstacleAvoidanceOnce, Qt::QueuedConnection);
+	connect(m_trajectoryController.get(), &RobotTrajectoryController::requestObstacleAvoidanceI, this, &MainWindow::obstacleAvoidanceOnceI, Qt::QueuedConnection);
 	connect(this, &MainWindow::appendTransitionPoints, m_trajectoryController.get(), &RobotTrajectoryController::on_appendTransitionPoints_append, Qt::QueuedConnection);
 
 	connect(this, &MainWindow::lidarDataReady, m_trajectoryController.get(), &RobotTrajectoryController::on_lidarDataReady_map, Qt::QueuedConnection);
@@ -133,6 +134,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
 	rect = ui->frame->geometry(); //ziskate porametre stvorca,do ktoreho chcete kreslit
 	rect.translate(0, 15);
 	painter.drawRect(rect);
+	static QPointF lastOne, lastTwo;
 
 	if (useCamera1 == true && actIndex > -1) /// ak zobrazujem data z kamery a aspon niektory frame vo vectore je naplneny
 	{
@@ -158,6 +160,27 @@ void MainWindow::paintEvent(QPaintEvent *event)
 				if (rect.contains(xp, yp)) //ak je bod vo vnutri nasho obdlznika tak iba vtedy budem chciet kreslit
 					painter.drawEllipse(QPoint(xp, yp), 2, 2);
 			}
+			int x1 = rect.width() - (rect.width() / 2 + m_cornerOne.x()/200 * 2 * sin((360.0 - m_cornerOne.y()) * 3.14159 / 180.0)) + rect.topLeft().x();
+			int x2 = rect.width() - (rect.width() / 2 + m_cornerTwo.x()/200 * 2 * sin((360.0 - m_cornerTwo.y()) * 3.14159 / 180.0)) + rect.topLeft().x();
+
+			int y1 = rect.width() - (rect.width() / 2 + m_cornerOne.y()/200 * 2 * sin((360.0 - m_cornerOne.y()) * 3.14159 / 180.0)) + rect.topLeft().x();
+			int y2 = rect.width() - (rect.width() / 2 + m_cornerTwo.y()/200 * 2 * sin((360.0 - m_cornerTwo.y()) * 3.14159 / 180.0)) + rect.topLeft().x();
+
+			if (m_cornerOne.x() != 0 && m_cornerOne.y() != 0 && m_cornerTwo.x() != 0 && m_cornerTwo.y() != 0) {
+				if (lastOne != m_cornerOne || lastTwo != m_cornerTwo) {
+					lastOne = m_cornerOne;
+					lastTwo = m_cornerTwo;
+					qDebug() << "Corner 1: " << m_cornerOne << "\tCorner 2: " << m_cornerTwo;
+					qDebug() << "Corner 1: " << QPointF(x1, y1) << "\t\tCorner 2: " << QPointF(x2, y2);
+				}
+			}
+
+			pero.setColor(Qt::red);
+			painter.setPen(pero);
+			if (rect.contains(x1, y1)) //ak je bod vo vnutri nasho obdlznika tak iba vtedy budem chciet kreslit
+				painter.drawEllipse(QPoint(x1, y1), 5, 5);
+			// if (rect.contains(x2, y2)) //ak je bod vo vnutri nasho obdlznika tak iba vtedy budem chciet kreslit
+				painter.drawEllipse(QPoint(x2, y2), 5, 5);
 		}
 	}
 }
@@ -577,6 +600,22 @@ void MainWindow::handlePath(QVector<QPointF> path)
 	emit arcResultsReady(distance, angle, path);
 }
 
+void MainWindow::obstacleAvoidanceOnceI(const QPointF &target, int idx)
+{
+	qDebug() << "Obstacle avoidance activated with target: " << target;
+
+	QPointF approach = analyseCorners(copyOfLaserData, {m_x, m_y}, idx, target);
+
+	QPointF transitionPoint{ (m_x + approach.x())/2., (m_y + approach.y())/2. };
+	QPointF line = computeLineParameters({m_x, m_y}, target);
+	QPointF bypass = {m_x+1, line.x() * (m_x+1) + line.y()};
+	QVector<QPointF> points = { transitionPoint, approach, bypass };
+
+	qDebug() << "Appending points: " << points;
+
+	emit appendTransitionPoints(points);
+}
+
 void MainWindow::obstacleAvoidanceOnce(const QPointF &target)
 {
 	qDebug() << "Obstacle avoidance activated with target: " << target;
@@ -598,7 +637,6 @@ void MainWindow::obstacleAvoidanceOnce(const QPointF &target)
 		emit appendTransitionPoints(points);
 	}
 }
-
 
 void MainWindow::onLiveAvoidObstaclesButton_clicked(bool clicked)
 {
@@ -774,6 +812,58 @@ bool MainWindow::wasCornerVisited(obstacleCorner thisCorner)
 		}
 		return false;
 	}
+}
+
+QPointF MainWindow::analyseCorners(LaserMeasurement &laserData, const QPointF &actual, int idx, const QPointF &target)
+{
+	QPointF cornerOne, cornerTwo;
+	double angleOne, angleTwo;
+	for (size_t i = 0; i < laserData.numberOfScans-1; i++) {
+		auto sample = laserData.Data[i];
+		auto nextSample = laserData.Data[i+1];
+		if (std::abs(sample.scanDistance - nextSample.scanDistance) > 600){
+			double dist = sample.scanDistance / 1000.0;
+			double ang = m_fi - sample.scanAngle * TO_RADIANS;
+			cornerOne = {actual.x() + dist * std::cos(ang), actual.y() + dist * std::sin(ang)};
+
+			m_cornerOne = {sample.scanDistance, sample.scanAngle};
+			angleOne = ang;
+			m_cornerOneAngle = sample.scanAngle;
+			qDebug() << "Corner one: " << cornerOne;
+			break;
+		}
+	}
+
+	for (size_t i = 360; i > 1; i--) {
+		auto sample = laserData.Data[i];
+		auto nextSample = laserData.Data[i-1];
+		if (std::abs(sample.scanDistance - nextSample.scanDistance) > 600){
+			double dist = sample.scanDistance / 1000.0;
+			double ang = m_fi + sample.scanAngle * TO_RADIANS;
+			cornerTwo = {actual.x() + dist * std::cos(ang), actual.y() + dist * std::sin(ang)};
+
+			m_cornerTwo = {sample.scanDistance, sample.scanAngle};
+			angleTwo = ang;
+			m_cornerTwoAngle = sample.scanAngle;
+			qDebug() << "Corner two: " << cornerTwo;
+			break;
+		}
+	}
+
+	double distanceThroughOne = computeDistancePoints(actual, cornerOne) + computeDistancePoints(cornerOne, target);
+	double distanceThroughTwo = computeDistancePoints(actual, cornerTwo) + computeDistancePoints(cornerTwo, target);
+
+	auto approach = (distanceThroughOne < distanceThroughTwo) ? cornerOne : cornerTwo;
+	auto angle = (distanceThroughOne < distanceThroughTwo) ? angleOne : angleTwo;
+
+	double dist = computeDistancePoints(actual, approach);
+	double a = 0.4;
+	// Using a cosine rule to calculate the point B that is a distance a from the point A and a distance dist from the robot
+	double c = std::sqrt(a * a + dist * dist - 2 * a * dist * std::cos(angle));
+
+	auto out = computeTargetPosition(actual.x(), actual.y(), angle, c, true);
+	qDebug() << "Approach: " << approach << " Out: " << out;
+	return out;
 }
 
 void MainWindow::analyseCorners(LaserMeasurement &laserData, double actual_X, double actual_Y)
@@ -968,7 +1058,7 @@ QPointF MainWindow::computeTargetPosition(double actual_X, double actual_Y, doub
 {
 	// Convert the angle to radians
 	double angleRad = angleToTarget_deg * M_PI / 180.0;
-	angleRad = angleRad - (m_fi - M_PI / 2.0);
+	angleRad =  m_fi - (2*M_PI - angleRad- M_PI / 2.0);
 	if (angleRad > (2.0 * M_PI))
 		angleRad = angleRad - (2.0 * M_PI);
 

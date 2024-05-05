@@ -52,8 +52,13 @@ void FloodPlanner::on_requestPath_plan(const QPointF &start, const QPointF &end)
 	QPoint s = toMapCoord(start);
 	QPoint e = toMapCoord(end);
 
+	if (!isTileValid(*m_map, s)) {
+		qDebug() << "Invalid start point";
+		printMapWithPath(QVector<QPoint> { s, e });
+		return;
+	}
 	if (!isTileValid(*m_map, e)) {
-		qDebug() << "Invalid start or end point";
+		qDebug() << "Invalid end point";
 		printMapWithPath(QVector<QPoint> { s, e });
 		return;
 	}
