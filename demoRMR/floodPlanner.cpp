@@ -59,6 +59,10 @@ void FloodPlanner::on_requestPath_plan(const QPointF &start, const QPointF &end)
 	}
 
 	qDebug() << "Start: " << s << " End: " << e;
+	if (s == e) {
+		emit pathPlanned({end});
+		return;
+	}
 
 	auto path = planPath(s, e, TrajectoryType::Diagonal);
 
