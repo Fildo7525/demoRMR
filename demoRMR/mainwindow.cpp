@@ -673,7 +673,6 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 							auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
 							emit arcResultsReady(distance, angle, points);
 
-	//						visitedCorners[visitedCornersCount] = cornerWithShortestPath;
 							timerStarted = false;
 							emit startCheckCornersTimer();
 
@@ -697,7 +696,18 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 
 			static bool regulationOn = false;
 
-			if(commingToWall){
+			double distanceToTarget = computeDistance(m_x,m_y,autoModeTarget_X,autoModeTarget_Y);
+			double angleToTarget =  computeAngle(m_x,m_y,autoModeTarget_X,autoModeTarget_Y,m_fi);
+			if (doISeeTheTarget(copyOfLaserData,angleToTarget,distanceToTarget))
+			{
+				if(!finalTransportStarted)
+				{
+					std::cout << "target visible at: " << angleToTarget << std::endl;
+					finalTransportStarted = true;
+					doFinalTransport();
+				}
+			}
+			else if(commingToWall){
 				if(isDistanceToWallLessThen(0.7)){
 					speed = 0.0;
 					if(distancePerDT < DISTANCE_PER_DT_STEADY_THRESHOLD){
@@ -740,9 +750,6 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 			}
 
 
-
-//			std::cout << filteredRotationSpeed << std::endl;
-
 			lastTranslationSpeed = filteredSpeed;
 			lastRotationSpeed = filteredRotationSpeed;
 		}
@@ -777,7 +784,6 @@ double MainWindow::getRegulationError(){
 			sideFrontDist = copyOfLaserData.Data[i].scanDistance / 1000.0;
 		}
 		if(copyOfLaserData.Data[i].scanAngle < 2.0 || copyOfLaserData.Data[i].scanAngle > 358.0){
-//			std::cout << copyOfLaserData.Data[i].scanAngle << " " << copyOfLaserData.Data[i].scanDistance << std::endl;
 			frontDist = copyOfLaserData.Data[i].scanDistance / 1000.0;
 		}
 		if(copyOfLaserData.Data[i].scanAngle < 30.0 || copyOfLaserData.Data[i].scanAngle > 330.0){
@@ -789,7 +795,6 @@ double MainWindow::getRegulationError(){
 
 	if(minDist/1000.0 < 0.4){
 		error = 1;
-		std::cout<<"too close"<<std::endl;
 	}
 	else if(sideFrontDist > 1.2){
 		error = error +( (-1) * (0.01*(sideFrontDist + 1.2)) );
