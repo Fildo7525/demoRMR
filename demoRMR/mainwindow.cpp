@@ -75,7 +75,7 @@ MainWindow::MainWindow(QWidget *parent)
 	// Object for managing the robot speed interactions.
 	m_trajectoryController = std::make_shared<RobotTrajectoryController>(&robot, this);
 
-	m_floodPlanner = std::make_shared<FloodPlanner>(MAP_PATH);
+	m_floodPlanner = std::make_shared<FloodPlanner>("map.txt");
 
 	// Creating all connections
 	connect(this, &MainWindow::moveForward, m_trajectoryController.get(), &RobotTrajectoryController::onMoveForwardMove, Qt::QueuedConnection);
@@ -591,14 +591,32 @@ void MainWindow::obstacleAvoidanceOnce(const QPointF &target)
 		QPointF approach = cornerWithShortestPath.cornerApproachPoint;
 		QPointF transitionPoint{ (m_x + approach.x())/2., (m_y + approach.y())/2. };
 		QPointF line = computeLineParameters({m_x, m_y}, target);
-		QPointF bypass = {m_x+2, line.x() * (m_x+2) + line.y()};
+		QPointF bypassLinePoint = computeSecondPoint(line.x(),line.y(),m_x,m_y,2);
 
-		QVector<QPointF> points = { transitionPoint, approach, bypass };
-		qDebug() << "Approaching corner: " << cornerWithShortestPath.cornerApproachPoint << " Bypassing corner: " << bypass;
+		QVector<QPointF> points = { transitionPoint, approach, cornerWithShortestPath.cornerBypassPoint ,bypassLinePoint };
+		qDebug() << "Approaching corner: " << cornerWithShortestPath.cornerApproachPoint << " Bypassing corner: " << bypassLinePoint;
 		emit appendTransitionPoints(points);
 	}
 }
 
+QPointF MainWindow::computeSecondPoint(double a, double b, double m_x, double m_y, double distance) {
+	// Compute distance from (m_x, m_y) to the second point along the line
+	double dx = distance / sqrt(1 + a * a);
+	double dy = a * dx;
+
+	// Compute the direction of the vector (dx, dy) based on the sign of 'a'
+	if (a < 0) {
+		dx *= -1;
+		dy *= -1;
+	}
+
+	// Compute the coordinates of the second point
+	QPointF secondPoint;
+	secondPoint.setX(m_x + dx);
+	secondPoint.setY(m_y + dy);
+
+	return secondPoint;
+}
 
 void MainWindow::onLiveAvoidObstaclesButton_clicked(bool clicked)
 {

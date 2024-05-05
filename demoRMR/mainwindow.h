@@ -122,6 +122,7 @@ private slots:
 	void onStartCheckCornersTimer();
 	void checkColision();
 	void obstacleAvoidanceAbort();
+	QPointF computeSecondPoint(double a, double b, double m_x, double m_y, double distance);
 
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);
