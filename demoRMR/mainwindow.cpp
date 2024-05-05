@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "lidarMapper.h"
+#include "robotTrajectoryController.h"
 #include "ui_mainwindow.h"
 
 #include <QDebug>
@@ -83,7 +84,7 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(this, &MainWindow::linResultsReady, m_trajectoryController.get(), &RobotTrajectoryController::handleLinResults, Qt::QueuedConnection);
 	connect(this, &MainWindow::arcResultsReady, m_trajectoryController.get(), &RobotTrajectoryController::handleArcResults, Qt::QueuedConnection);
 	connect(m_trajectoryController.get(), &RobotTrajectoryController::requestObstacleAvoidance, this, &MainWindow::obstacleAvoidanceOnce, Qt::QueuedConnection);
-	connect(this, &MainWindow::appenTransitionPoints, m_trajectoryController.get(), &RobotTrajectoryController::on_appendTransitionPoints_append, Qt::QueuedConnection);
+	connect(this, &MainWindow::appendTransitionPoints, m_trajectoryController.get(), &RobotTrajectoryController::on_appendTransitionPoints_append, Qt::QueuedConnection);
 
 	connect(this, &MainWindow::lidarDataReady, m_trajectoryController.get(), &RobotTrajectoryController::on_lidarDataReady_map, Qt::QueuedConnection);
 	connect(this, &MainWindow::lidarDataReady, m_trajectoryController.get(), &RobotTrajectoryController::updateLidarData, Qt::QueuedConnection);
@@ -579,14 +580,22 @@ void MainWindow::handlePath(QVector<QPointF> path)
 void MainWindow::obstacleAvoidanceOnce(const QPointF &target)
 {
 	qDebug() << "Obstacle avoidance activated with target: " << target;
+
 	autoModeTarget_X = target.x();
 	autoModeTarget_Y = target.y();
 	analyseCorners(copyOfLaserData, m_x, m_y);
+
 	if(cornersAvailable > 0){
 		findCornerWithShortestPath();
-		QVector<QPointF> points = { cornerWithShortestPath.cornerApproachPoint, cornerWithShortestPath.cornerBypassPoint };
-		qDebug() << "Approaching corner: " << cornerWithShortestPath.cornerApproachPoint << " Bypassing corner: " << cornerWithShortestPath.cornerBypassPoint;
-		emit appenTransitionPoints(points);
+
+		QPointF approach = cornerWithShortestPath.cornerApproachPoint;
+		QPointF transitionPoint{ (m_x + approach.x())/2., (m_y + approach.y())/2. };
+		QPointF line = computeLineParameters({m_x, m_y}, target);
+		QPointF bypass = {m_x+2, line.x() * (m_x+2) + line.y()};
+
+		QVector<QPointF> points = { transitionPoint, approach, bypass };
+		qDebug() << "Approaching corner: " << cornerWithShortestPath.cornerApproachPoint << " Bypassing corner: " << bypass;
+		emit appendTransitionPoints(points);
 	}
 }
 
@@ -935,10 +944,6 @@ void MainWindow::analyseCorners(LaserMeasurement &laserData, double actual_X, do
 			if (wasCornerVisited(thisObstacleCorner)) {
 				continue;
 			}
-			if (computeDistance(actual_X, actual_Y, autoModeTarget_X, autoModeTarget_Y)
-				< computeDistance(thisObstacleCorner.cornerApproachPoint.x(), thisObstacleCorner.cornerApproachPoint.y(), autoModeTarget_X, autoModeTarget_Y)) {
-				continue;
-			}
 
 			if (0) {
 				std::cout << "Corner at angle: " << laserDataDiff.Data[i].scanAngle;
@@ -957,19 +962,6 @@ void MainWindow::analyseCorners(LaserMeasurement &laserData, double actual_X, do
 		}
 	}
 	std::cout << cornersAvailable << std::endl;
-	if (cornersAvailable == 0) {
-		m_xTarget = visitedCorners[visitedCornersCount].cornerApproachPoint.x();
-		m_yTarget = visitedCorners[visitedCornersCount].cornerApproachPoint.y();
-		std::cout << "No more corners - Aproaching last visited corner:" << visitedCorners[visitedCornersCount].cornerApproachPoint.x() << ", "
-				  << visitedCorners[visitedCornersCount].cornerApproachPoint.y() << std::endl;
-
-		QVector<QPointF> points = { { visitedCorners[visitedCornersCount].cornerBypassPoint.x(), visitedCorners[visitedCornersCount].cornerBypassPoint.y() },
-									{ visitedCorners[visitedCornersCount].cornerApproachPoint.x(), visitedCorners[visitedCornersCount].cornerApproachPoint.y() } };
-		auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
-		emit arcResultsReady(distance, angle, points);
-		timerStarted = false;
-		emit startCheckCornersTimer();
-	}
 }
 
 QPointF MainWindow::computeTargetPosition(double actual_X, double actual_Y, double angleToTarget_deg, double distanceToTarget, bool dir)

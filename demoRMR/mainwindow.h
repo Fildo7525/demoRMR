@@ -25,7 +25,7 @@
 #define TILE_SIZE 280. // 280 mm => 28cm
 #define MAX_OBSTACLE_CORNERS 10
 #define MAX_VISITED_CORNERS 25
-#define CORNER_APPROACH_GAP 0.5
+#define CORNER_APPROACH_GAP 0.4
 #define DISTANCE_PER_DT_STEADY_THRESHOLD 0.00003
 #define CORNER_VISITED_TOLERANCE 0.4
 #define LASER_DIFF_CORNER_THRESHOLD 0.5
@@ -145,7 +145,7 @@ signals:
 	void linResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 	void arcResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 	void lidarDataReady(LaserMeasurement laserData);
-	void appenTransitionPoints(const QVector<QPointF> &points);
+	void appendTransitionPoints(const QVector<QPointF> &points);
 
 private:
 	bool useCamera1;

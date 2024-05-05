@@ -112,6 +112,7 @@ private:
 
 	int m_fileWriteCounter;
 	bool m_arcExpected;
+	bool m_isAvoiding;
 	Map m_map;
 	LaserMeasurement m_lidarData;
 };

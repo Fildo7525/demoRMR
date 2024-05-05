@@ -415,11 +415,12 @@ void RobotTrajectoryController::on_lidarDataReady_map(LaserMeasurement laserData
 bool RobotTrajectoryController::isDistanceToWallLessThen(const LaserMeasurement &laserData, float dist)
 {
 	for (int i = 0; i < laserData.numberOfScans; ++i){
-		if((laserData.Data[i].scanDistance / 1000.0) < dist
-			&& (laserData.Data[i].scanDistance > 0)
-			&& (laserData.Data[i].scanAngle < 30
-			||  laserData.Data[i].scanAngle > 330)) {
-			return true;
+		auto distance = laserData.Data[i].scanDistance / 1000.0;
+		auto angle = laserData.Data[i].scanAngle;
+		if (angle < 30 || angle > 330) {
+			if ( distance < dist && distance > 0) {
+				return true;
+			}
 		}
 	}
 	return false;
@@ -427,14 +428,15 @@ bool RobotTrajectoryController::isDistanceToWallLessThen(const LaserMeasurement 
 
 void RobotTrajectoryController::updateLidarData(LaserMeasurement laserData)
 {
-	m_lidarData = laserData;
+	m_lidarData = std::move(laserData);
 
 	if (m_points.isEmpty()) {
 		return;
 	}
 
-	qDebug() << "Checking for obstacles";
-	if (isDistanceToWallLessThen(laserData, 0.2)) {
+	if (isDistanceToWallLessThen(laserData, 0.4) && !m_isAvoiding) {
+		qDebug() << "Checking for obstacles";
+		m_isAvoiding = true;
 		emit requestObstacleAvoidance(m_points.first());
 	}
 }
@@ -447,6 +449,8 @@ void RobotTrajectoryController::on_appendTransitionPoints_append(const QVector<Q
 
 	auto [distance, rotation] = qobject_cast<MainWindow *>(m_mainWindow)->calculateTrajectory();
 	handleArcResults(distance, rotation, m_points);
+
+	QTimer::singleShot(4'000, this, [this] () {m_isAvoiding = false;});
 }
 
 std::ostream &operator<<(std::ostream &os, const RobotTrajectoryController::Map &map)
