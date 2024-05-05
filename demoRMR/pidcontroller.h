@@ -9,7 +9,7 @@ class PIDController : public QObject
 {
 	Q_OBJECT
 public:
-	PIDController(double p, double i, double d, double target = 0);
+	PIDController(double p, double i, double d, double target = 0, double min = -250, double max = 250);
 	double compute(double current);
 	double computeFromError(double error, bool limit = false);
 	void setTarget(double newTarget) { m_target = newTarget; }
@@ -24,6 +24,8 @@ private:
 	double m_prev_error; // Previous error
 	double m_virginOutput;
 	double m_clampedOutput;
+	double m_min;
+	double m_max;
 };
 
 #endif // PIDCONTROLLER_H

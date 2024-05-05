@@ -153,7 +153,7 @@ void RobotTrajectoryController::moveByArcTo(double distance, double rotation)
 	m_accelerationTimer.stop();
 	m_stoppingTimer.stop();
 
-	m_controller = std::make_shared<PIDController>(1000, 0, 0, distance);
+	m_controller = std::make_shared<PIDController>(1000, 0, 0, distance, -500, 500);
 	m_rotationController = std::make_shared<PIDController>(1, 0, 0, rotation);
 
 	m_positionTimer.start();

@@ -69,6 +69,7 @@ public slots:
 
 	void on_lidarDataReady_map(LaserMeasurement laserData);
 	bool isDistanceToWallLessThen(const LaserMeasurement &laserData, float dist);
+	bool isDistanceToWallLessThen(const LaserMeasurement &laserData, float dist, int &idx);
 	void updateLidarData(LaserMeasurement laserData);
 	void on_appendTransitionPoints_append(const QVector<QPointF> &points);
 
