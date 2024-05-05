@@ -260,7 +260,7 @@ void RobotTrajectoryController::on_positionTimerTimeout_changePosition()
 	}
 	else if (m_movementType == MovementType::Arc) {
 		error = localDistanceError();
-		if (finalDistanceError() == localRotationError()) {
+		if (finalDistanceError() == localDistanceError()) {
 			maxCorrection = 0.05;
 		}
 		else {
