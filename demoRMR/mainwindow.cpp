@@ -639,8 +639,6 @@ void MainWindow::obstacleAvoidanceAbort(){
 		delete obstacleAvoidanceThread;
 		obstacleAvoidanceThread = nullptr;
 		qDebug() << "Obstacle avoidance thread stopped.";
-	} else {
-		qDebug() << "No obstacle avoidance thread to stop.";
 	}
 }
 
@@ -671,6 +669,7 @@ void MainWindow::obstacleAvoidanceTrajectoryInit(double X_target, double Y_targe
 
 void MainWindow::obstacleAvoidanceTrajectoryHandle()
 {
+	qDebug() << "ID:" << QThread::currentThreadId();
 	while(m_isInAutoMode)
 	{
 		if(!wallFollow){
@@ -829,7 +828,7 @@ double MainWindow::getRegulationError(){
 		error = 1;
 	}
 	else if(sideFrontDist > 1.2){
-		error = error +( (-1) * (0.03*(sideFrontDist + 1.2)) );
+		error = error +( (-1) * (0.025*(sideFrontDist + 1.2)) );
 		if(error < (-0.1) ){
 			error = -0.1;
 		}
@@ -1180,6 +1179,7 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 	if(cornersAvailable == 0){
 
 		std::cout << "No more corners - Switching to wall follow" << std::endl;
+		robot.setTranslationSpeed(0);
 		wallFollow = true;
 	}
 
