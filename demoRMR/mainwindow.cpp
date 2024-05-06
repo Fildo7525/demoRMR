@@ -797,6 +797,7 @@ double MainWindow::getRegulationError(){
 	double sat = 3.14;
 	double minDist = 2000.0;
 	int minDistCount = 0;
+	int sideFrontDistCount = 0;
 
 	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i){
 		if(copyOfLaserData.Data[i].scanAngle < 92.0 && copyOfLaserData.Data[i].scanAngle > 88.0){
@@ -810,8 +811,14 @@ double MainWindow::getRegulationError(){
 			sideDistNext = sideDistNext / 1000.0;
 			sideDistNext = sideDistNext / 3.0;
 		}
-		if(copyOfLaserData.Data[i].scanAngle < 66.0 && copyOfLaserData.Data[i].scanAngle > 62.0){
-			sideFrontDist = copyOfLaserData.Data[i].scanDistance / 1000.0;
+		if(copyOfLaserData.Data[i].scanAngle < 80.0 && copyOfLaserData.Data[i].scanAngle > 55.0){
+			sideFrontDistCount++;
+			if(copyOfLaserData.Data[i].scanDistance > 0.0){
+				sideFrontDist = sideFrontDist + (copyOfLaserData.Data[i].scanDistance / 1000.0);
+			}
+			else{
+				sideFrontDist = sideFrontDist + 1.5;
+			}
 		}
 		if(copyOfLaserData.Data[i].scanAngle < 2.0 || copyOfLaserData.Data[i].scanAngle > 358.0){
 			frontDist = copyOfLaserData.Data[i].scanDistance / 1000.0;
@@ -823,12 +830,13 @@ double MainWindow::getRegulationError(){
 			}
 		}
 	}
+	sideFrontDist = (double) sideFrontDist / sideFrontDistCount;
 
 	if(minDist/1000.0 < 0.4){
 		error = 1;
 	}
 	else if(sideFrontDist > 1.2){
-		error = error +( (-1) * (0.025*(sideFrontDist + 1.2)) );
+		error = error +( (-1) * (0.015*(sideFrontDist + 1.2)) );
 		if(error < (-0.1) ){
 			error = -0.1;
 		}
