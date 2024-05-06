@@ -693,6 +693,7 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 			static double rotationSpeed = 0.0;
 			static double alpha_rotation = 0.1;
 			static bool rotateTowardsWall = false;
+			static int targetVisibleCount = 0;
 
 			static bool regulationOn = false;
 
@@ -700,14 +701,17 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 			double angleToTarget =  computeAngle(m_x,m_y,autoModeTarget_X,autoModeTarget_Y,m_fi);
 			if (doISeeTheTarget(copyOfLaserData,angleToTarget,distanceToTarget))
 			{
-				if(!finalTransportStarted)
+				targetVisibleCount++;
+				if(!finalTransportStarted && targetVisibleCount > 30)
 				{
 					std::cout << "target visible at: " << angleToTarget << std::endl;
 					finalTransportStarted = true;
 					doFinalTransport();
+					targetVisibleCount = 0;
 				}
 			}
 			else if(commingToWall){
+				targetVisibleCount = 0;
 				if(isDistanceToWallLessThen(0.7)){
 					speed = 0.0;
 					if(distancePerDT < DISTANCE_PER_DT_STEADY_THRESHOLD){
@@ -717,6 +721,7 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 				}
 			}
 			else if(rotateTowardsWall){
+				targetVisibleCount = 0;
 				if(isRotatedTowardsWall()){
 					rotationSpeed = 0.0;
 					rotateTowardsWall = false;
@@ -727,7 +732,8 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 				}
 			}
 			else if(regulationOn){
-				speed = 220.0;
+				targetVisibleCount = 0;
+				speed = 250.0;
 
 				rotationSpeed = getRegulationError();
 			}
@@ -767,6 +773,7 @@ double MainWindow::getRegulationError(){
 	double PID_P = 10.0;
 	double sat = 3.14;
 	double minDist = 2000.0;
+	int minDistCount = 0;
 
 	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i){
 		if(copyOfLaserData.Data[i].scanAngle < 92.0 && copyOfLaserData.Data[i].scanAngle > 88.0){
@@ -789,6 +796,7 @@ double MainWindow::getRegulationError(){
 		if(copyOfLaserData.Data[i].scanAngle < 30.0 || copyOfLaserData.Data[i].scanAngle > 330.0){
 			if(copyOfLaserData.Data[i].scanDistance < minDist && copyOfLaserData.Data[i].scanDistance > 0.0){
 				minDist = copyOfLaserData.Data[i].scanDistance;
+				minDistCount++;
 			}
 		}
 	}
@@ -797,7 +805,10 @@ double MainWindow::getRegulationError(){
 		error = 1;
 	}
 	else if(sideFrontDist > 1.2){
-		error = error +( (-1) * (0.01*(sideFrontDist + 1.2)) );
+		error = error +( (-1) * (0.03*(sideFrontDist + 1.2)) );
+		if(error < (-0.1) ){
+			error = -0.1;
+		}
 	}
 	else if(frontDist < 1.0 && frontDist > 0.0){
 		error = error + 0.5*(1.0 - frontDist) ;
