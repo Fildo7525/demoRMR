@@ -146,6 +146,7 @@ signals:
 	void linResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 	void arcResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 	void lidarDataReady(LaserMeasurement laserData);
+	void obstalceAvoidanceAbortSignal();
 
 private:
 	bool useCamera1;
@@ -211,6 +212,19 @@ private:
 	bool isInitialCornerCheck;
 	bool checkingColision;
 	bool wallFollow;
+	//wallFollow
+	double lastTranslationSpeed;
+	double filteredSpeed;
+	double alpha;
+	bool commingToWall;
+	double speed;
+	double lastRotationSpeed;
+	double filteredRotationSpeed;
+	double rotationSpeed;
+	double alpha_rotation;
+	bool rotateTowardsWall;
+	int targetVisibleCount;
+	bool regulationOn;
 };
 
 #endif // MAINWINDOW_H

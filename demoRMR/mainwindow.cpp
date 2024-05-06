@@ -35,7 +35,6 @@ MainWindow::MainWindow(QWidget *parent)
 	, m_yTarget(0)
 	, m_controllerThread(new QThread(this))
 	, m_plannerThread(new QThread(this))
-	, obstacleAvoidanceThread(new QThread(this))
     , m_isInAutoMode(false)
     , autoModeTarget_X(0)
     , autoModeTarget_Y(0)
@@ -47,7 +46,19 @@ MainWindow::MainWindow(QWidget *parent)
 	, timerStarted(false)
 	, isInitialCornerCheck(true)
 	, checkingColision(false)
-	, wallFollow(true)
+	, wallFollow(false)
+	, lastTranslationSpeed(0.0)
+	, filteredSpeed(0.0)
+	, alpha(0.04)
+	, commingToWall(true)
+	, speed(160.0)
+	, lastRotationSpeed(0.0)
+	, filteredRotationSpeed(0.0)
+	, rotationSpeed(0.0)
+	, alpha_rotation(0.1)
+	, rotateTowardsWall(false)
+	, targetVisibleCount(0)
+	, regulationOn(false)
 {
 	qDebug() << "MainWindow starting";
 	//tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
@@ -98,6 +109,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 	connect(checkCornersTimer, &QTimer::timeout, this, &MainWindow::doCheckCorners);
 	connect(this, &MainWindow::startCheckCornersTimer, this, &MainWindow::onStartCheckCornersTimer);
+
+	connect(this, &MainWindow::obstalceAvoidanceAbortSignal, this, &MainWindow::obstacleAvoidanceAbort);
 
 	// Starting threads
 	m_controllerThread->start();
@@ -604,6 +617,31 @@ void MainWindow::obstacleAvoidanceAbort(){
 	timerStarted=false;
 	isInitialCornerCheck=true;
 	checkingColision=false;
+	wallFollow = false;
+
+	lastTranslationSpeed=0.0;
+	filteredSpeed=0.0;
+	alpha=0.04;
+	commingToWall=true;
+	speed=160.0;
+	lastRotationSpeed=0.0;
+	filteredRotationSpeed=0.0;
+	rotationSpeed=0.0;
+	alpha_rotation=0.1;
+	rotateTowardsWall=false;
+	targetVisibleCount=0;
+	regulationOn=false;
+
+	if (obstacleAvoidanceThread) {
+		qDebug() << "Stopping obstacle avoidance thread...";
+		obstacleAvoidanceThread->quit();
+		obstacleAvoidanceThread->wait(); // Wait for the thread to finish
+		delete obstacleAvoidanceThread;
+		obstacleAvoidanceThread = nullptr;
+		qDebug() << "Obstacle avoidance thread stopped.";
+	} else {
+		qDebug() << "No obstacle avoidance thread to stop.";
+	}
 }
 
 void MainWindow::obstacleAvoidanceTrajectoryInit(double X_target, double Y_target, double actual_X, double actual_Y, double actual_Fi)
@@ -682,27 +720,13 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 			}
 		}
 		else{
-			static double lastTranslationSpeed = 0.0;
-			static double filteredSpeed = 0.0;
-			static double alpha = 0.04;
-			static bool commingToWall = true;
-			static double speed = 160.0;
-
-			static double lastRotationSpeed = 0.0;
-			static double filteredRotationSpeed = 0.0;
-			static double rotationSpeed = 0.0;
-			static double alpha_rotation = 0.1;
-			static bool rotateTowardsWall = false;
-			static int targetVisibleCount = 0;
-
-			static bool regulationOn = false;
 
 			double distanceToTarget = computeDistance(m_x,m_y,autoModeTarget_X,autoModeTarget_Y);
 			double angleToTarget =  computeAngle(m_x,m_y,autoModeTarget_X,autoModeTarget_Y,m_fi);
 			if (doISeeTheTarget(copyOfLaserData,angleToTarget,distanceToTarget))
 			{
 				targetVisibleCount++;
-				if(!finalTransportStarted && targetVisibleCount > 30)
+				if(!finalTransportStarted && targetVisibleCount > 20)
 				{
 					std::cout << "target visible at: " << angleToTarget << std::endl;
 					finalTransportStarted = true;
@@ -893,25 +917,27 @@ void MainWindow::checkColision() {
 
 void MainWindow::onStartCheckCornersTimer() {
 	// Start the timer
-	if(m_isInAutoMode){
+	if(m_isInAutoMode && !wallFollow){
 		checkCornersTimer->start(3000);
 	}
 }
 
 void MainWindow::doCheckCorners() {
-	std::cout << m_trajectoryController->finalDistanceError() << std::endl;
-	if(!timerStarted && m_isInAutoMode && m_trajectoryController->finalDistanceError() < 0.1){
-		checkingColision = true;
-		checkCorners = true;
-		timerStarted = true;
-		if(isInitialCornerCheck){
-			isInitialCornerCheck = false;
+	if(!wallFollow && m_isInAutoMode){
+		std::cout << m_trajectoryController->finalDistanceError() << std::endl;
+		if(!timerStarted && m_isInAutoMode && m_trajectoryController->finalDistanceError() < 0.1){
+			checkingColision = true;
+			checkCorners = true;
+			timerStarted = true;
+			if(isInitialCornerCheck){
+				isInitialCornerCheck = false;
+			}
+			else{
+				visitedCornersCount++;
+			}
+			std::cout << "Check corner to be done at next stop." << std::endl;
+			checkCornersTimer->stop();
 		}
-		else{
-			visitedCornersCount++;
-		}
-		std::cout << "Check corner to be done at next stop." << std::endl;
-		checkCornersTimer->stop();
 	}
 
 }
@@ -1153,19 +1179,8 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
     std::cout << cornersAvailable << std::endl;
 	if(cornersAvailable == 0){
 
-		m_xTarget = visitedCorners[visitedCornersCount].cornerApproachPoint.x();
-		m_yTarget = visitedCorners[visitedCornersCount].cornerApproachPoint.y();
-		std::cout << "No more corners - Aproaching last visited corner:" << visitedCorners[visitedCornersCount].cornerApproachPoint.x() << ", " << visitedCorners[visitedCornersCount].cornerApproachPoint.y() << std::endl;
-
-		QVector<QPointF> points = {
-			{visitedCorners[visitedCornersCount].cornerBypassPoint.x(), visitedCorners[visitedCornersCount].cornerBypassPoint.y()},
-			{visitedCorners[visitedCornersCount].cornerApproachPoint.x(), visitedCorners[visitedCornersCount].cornerApproachPoint.y()}
-		};
-		auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
-		emit arcResultsReady(distance, angle, points);
-		timerStarted = false;
-		emit startCheckCornersTimer();
-
+		std::cout << "No more corners - Switching to wall follow" << std::endl;
+		wallFollow = true;
 	}
 
 }
@@ -1209,7 +1224,8 @@ void MainWindow::doFinalTransport()
 		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
     }
     m_isInAutoMode = false;
-	obstacleAvoidanceAbort();
+//	emit obstalceAvoidanceAbortSignal();
+//	QThread::currentThread()->quit();
 
 }
 
