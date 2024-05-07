@@ -148,6 +148,7 @@ signals:
 	void linResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 	void arcResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 	void lidarDataReady(LaserMeasurement laserData);
+	void appendTransitionPoints(const QVector<QPointF> &points);
 	void obstalceAvoidanceAbortSignal();
 	void positionControllerStopSignal();
 
