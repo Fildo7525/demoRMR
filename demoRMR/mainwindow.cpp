@@ -758,7 +758,7 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 			}
 			else if(regulationOn){
 				targetVisibleCount = 0;
-				speed = 250.0;
+				speed = 230.0;
 
 				rotationSpeed = getRegulationError();
 			}
@@ -774,10 +774,13 @@ void MainWindow::obstacleAvoidanceTrajectoryHandle()
 				std::this_thread::sleep_for(std::chrono::milliseconds(60));
 			}
 			else{
-				robot.setTranslationSpeed((int)filteredSpeed);
-				std::this_thread::sleep_for(std::chrono::milliseconds(30));
-				robot.setRotationSpeed(filteredRotationSpeed);
-				std::this_thread::sleep_for(std::chrono::milliseconds(30));
+//				robot.setTranslationSpeed((int)filteredSpeed);
+//				std::this_thread::sleep_for(std::chrono::milliseconds(30));
+//				robot.setRotationSpeed(filteredRotationSpeed);
+//				std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+				robot.setArcSpeed((int)filteredSpeed, filteredSpeed/filteredRotationSpeed);
+				std::this_thread::sleep_for(std::chrono::milliseconds(60));
 			}
 
 
