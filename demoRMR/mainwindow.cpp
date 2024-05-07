@@ -36,18 +36,30 @@ MainWindow::MainWindow(QWidget *parent)
 	, m_yTarget(0)
 	, m_controllerThread(new QThread(this))
 	, m_plannerThread(new QThread(this))
-	, obstacleAvoidanceThread(new QThread(this))
-	, m_isInAutoMode(false)
-	, autoModeTarget_X(0)
-	, autoModeTarget_Y(0)
-	, autoModeInit_X(0)
-	, autoModeInit_Y(0)
-	, finalTransportStarted(false)
-	, m_robotStartupLocation(false)
+    , m_isInAutoMode(false)
+    , autoModeTarget_X(0)
+    , autoModeTarget_Y(0)
+    , autoModeInit_X(0)
+    , autoModeInit_Y(0)
+    , finalTransportStarted(false)
+    , m_robotStartupLocation(false)
 	, visitedCornersCount(0)
 	, timerStarted(false)
 	, isInitialCornerCheck(true)
 	, checkingColision(false)
+	, wallFollow(false)
+	, lastTranslationSpeed(0.0)
+	, filteredSpeed(0.0)
+	, alpha(0.04)
+	, commingToWall(true)
+	, speed(160.0)
+	, lastRotationSpeed(0.0)
+	, filteredRotationSpeed(0.0)
+	, rotationSpeed(0.0)
+	, alpha_rotation(0.1)
+	, rotateTowardsWall(false)
+	, targetVisibleCount(0)
+	, regulationOn(false)
 {
 	qDebug() << "MainWindow starting";
 	//tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
@@ -95,12 +107,16 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
 	connect(ui->liveAvoidObstaclesButton, &QPushButton::clicked, this, &MainWindow::onLiveAvoidObstaclesButton_clicked, Qt::QueuedConnection);
 
-	//	QObject::connect(obstacleAvoidanceThread, &QThread::started, [this]() {
-	//		this->obstacleAvoidanceTrajectoryHandle();
-	//	});
+	connect(this, &MainWindow::positionControllerStopSignal, m_trajectoryController.get(), &RobotTrajectoryController::on_stoppingTimerTimeout_stop, Qt::QueuedConnection);
+//	QObject::connect(obstacleAvoidanceThread, &QThread::started, [this]() {
+//		this->obstacleAvoidanceTrajectoryHandle();
+//	});
 
 	connect(checkCornersTimer, &QTimer::timeout, this, &MainWindow::doCheckCorners);
 	connect(this, &MainWindow::startCheckCornersTimer, this, &MainWindow::onStartCheckCornersTimer);
+
+	connect(this, &MainWindow::obstalceAvoidanceAbortSignal, this, &MainWindow::obstacleAvoidanceAbort);
+
 
 	// Starting threads
 	m_controllerThread->start();
@@ -613,15 +629,38 @@ void MainWindow::onLiveAvoidObstaclesButton_clicked(bool clicked)
 void MainWindow::obstacleAvoidanceAbort()
 {
 	m_isInAutoMode = false;
-	autoModeTarget_X = 0;
-	autoModeTarget_Y = 0;
-	autoModeInit_X = 0;
-	autoModeInit_Y = 0;
-	finalTransportStarted = false;
-	visitedCornersCount = 0;
-	timerStarted = false;
-	isInitialCornerCheck = true;
-	checkingColision = false;
+	autoModeTarget_X=0;
+	autoModeTarget_Y=0;
+	autoModeInit_X=0;
+	autoModeInit_Y=0;
+	finalTransportStarted=false;
+	visitedCornersCount=0;
+	timerStarted=false;
+	isInitialCornerCheck=true;
+	checkingColision=false;
+	wallFollow = false;
+
+	lastTranslationSpeed=0.0;
+	filteredSpeed=0.0;
+	alpha=0.04;
+	commingToWall=true;
+	speed=160.0;
+	lastRotationSpeed=0.0;
+	filteredRotationSpeed=0.0;
+	rotationSpeed=0.0;
+	alpha_rotation=0.1;
+	rotateTowardsWall=false;
+	targetVisibleCount=0;
+	regulationOn=false;
+
+	if (obstacleAvoidanceThread) {
+		qDebug() << "Stopping obstacle avoidance thread...";
+		obstacleAvoidanceThread->quit();
+		obstacleAvoidanceThread->wait(); // Wait for the thread to finish
+		delete obstacleAvoidanceThread;
+		obstacleAvoidanceThread = nullptr;
+		qDebug() << "Obstacle avoidance thread stopped.";
+	}
 }
 
 void MainWindow::obstacleAvoidanceTrajectoryInit(double X_target, double Y_target, double actual_X, double actual_Y, double actual_Fi)
@@ -648,50 +687,246 @@ void MainWindow::obstacleAvoidanceTrajectoryInit(double X_target, double Y_targe
 
 void MainWindow::obstacleAvoidanceTrajectoryHandle()
 {
-	while (m_isInAutoMode) {
-		if (m_isInAutoMode && checkingColision) {
-			checkColision();
-		}
-		if (m_isInAutoMode && distancePerDT < DISTANCE_PER_DT_STEADY_THRESHOLD) // analyse stuff only when robot is steady
-		{
-			double distanceToTarget = computeDistance(m_x, m_y, autoModeTarget_X, autoModeTarget_Y);
-			double angleToTarget = computeAngle(m_x, m_y, autoModeTarget_X, autoModeTarget_Y, m_fi);
-
-			if (doISeeTheTarget(copyOfLaserData, angleToTarget, distanceToTarget)) {
-				if (!finalTransportStarted) {
-					std::cout << "target visible at: " << angleToTarget << std::endl;
-					finalTransportStarted = true;
-					doFinalTransport();
-				}
+	qDebug() << "ID:" << QThread::currentThreadId();
+	while(m_isInAutoMode)
+	{
+		if(!wallFollow){
+			if(m_isInAutoMode && checkingColision){
+				checkColision();
 			}
-			else {
-				if (checkCorners) {
-					checkCorners = false;
-					analyseCorners(copyOfLaserData, m_x, m_y);
-					if (cornersAvailable > 0) {
-						findCornerWithShortestPath();
-						m_xTarget = cornerWithShortestPath.cornerBypassPoint.x();
-						m_yTarget = cornerWithShortestPath.cornerBypassPoint.y();
-						std::cout << "Aproaching corner:" << cornerWithShortestPath.cornerApproachPoint.x() << ", "
-								  << cornerWithShortestPath.cornerApproachPoint.y() << std::endl;
-						visitedCorners[visitedCornersCount] = cornerWithShortestPath;
-						QVector<QPointF> points = { { cornerWithShortestPath.cornerApproachPoint.x(), cornerWithShortestPath.cornerApproachPoint.y() },
-													{ cornerWithShortestPath.cornerBypassPoint.x(), cornerWithShortestPath.cornerBypassPoint.y() } };
-						auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
-						emit arcResultsReady(distance, angle, points);
+			if (m_isInAutoMode && distancePerDT < DISTANCE_PER_DT_STEADY_THRESHOLD) // analyse stuff only when robot is steady
+			{
+				double distanceToTarget = computeDistance(m_x,m_y,autoModeTarget_X,autoModeTarget_Y);
+				double angleToTarget =  computeAngle(m_x,m_y,autoModeTarget_X,autoModeTarget_Y,m_fi);
 
-						//						visitedCorners[visitedCornersCount] = cornerWithShortestPath;
-						timerStarted = false;
-						emit startCheckCornersTimer();
+				if (doISeeTheTarget(copyOfLaserData,angleToTarget,distanceToTarget))
+				{
+					if(!finalTransportStarted)
+					{
+						std::cout << "target visible at: " << angleToTarget << std::endl;
+						finalTransportStarted = true;
+						doFinalTransport();
+					}
+				}
+				else
+				{
+					if(checkCorners)
+					{
+						checkCorners = false;
+						analyseCorners(copyOfLaserData, m_x,m_y);
+						if(cornersAvailable > 0)
+						{
+							findCornerWithShortestPath();
+							m_xTarget = cornerWithShortestPath.cornerBypassPoint.x();
+							m_yTarget = cornerWithShortestPath.cornerBypassPoint.y();
+							std::cout << "Aproaching corner:" << cornerWithShortestPath.cornerApproachPoint.x() << ", " << cornerWithShortestPath.cornerApproachPoint.y() << std::endl;
+							visitedCorners[visitedCornersCount] = cornerWithShortestPath;
+							QVector<QPointF> points = {
+								{cornerWithShortestPath.cornerApproachPoint.x(), cornerWithShortestPath.cornerApproachPoint.y()},
+								{cornerWithShortestPath.cornerBypassPoint.x(), cornerWithShortestPath.cornerBypassPoint.y()}
+							};
+							auto [distance, angle] = calculateTrajectoryTo({ m_xTarget, m_yTarget });
+							emit arcResultsReady(distance, angle, points);
+
+							timerStarted = false;
+							emit startCheckCornersTimer();
+
+						}
 					}
 				}
 			}
 		}
+		else{
+
+			double distanceToTarget = computeDistance(m_x,m_y,autoModeTarget_X,autoModeTarget_Y);
+			double angleToTarget =  computeAngle(m_x,m_y,autoModeTarget_X,autoModeTarget_Y,m_fi);
+			if (doISeeTheTarget(copyOfLaserData,angleToTarget,distanceToTarget))
+			{
+				targetVisibleCount++;
+				if(!finalTransportStarted && targetVisibleCount > 20)
+				{
+					std::cout << "target visible at: " << angleToTarget << std::endl;
+					finalTransportStarted = true;
+					doFinalTransport();
+					targetVisibleCount = 0;
+				}
+			}
+			else if(commingToWall){
+				targetVisibleCount = 0;
+				if(isDistanceToWallLessThen(0.7)){
+					speed = 0.0;
+					if(distancePerDT < DISTANCE_PER_DT_STEADY_THRESHOLD){
+						commingToWall = false;
+						rotateTowardsWall = true;
+					}
+				}
+			}
+			else if(rotateTowardsWall){
+				targetVisibleCount = 0;
+				if(isRotatedTowardsWall()){
+					rotationSpeed = 0.0;
+					rotateTowardsWall = false;
+					regulationOn = true;
+				}
+				else{
+					rotationSpeed = 0.3;
+				}
+			}
+			else if(regulationOn){
+				targetVisibleCount = 0;
+				speed = 230.0;
+
+				rotationSpeed = getRegulationError();
+			}
+
+			filteredRotationSpeed = alpha_rotation * rotationSpeed + (1 - alpha_rotation) * lastRotationSpeed;
+			filteredSpeed = alpha * speed + (1 - alpha) * lastTranslationSpeed;
+			if(commingToWall){
+				robot.setTranslationSpeed((int)filteredSpeed);
+				std::this_thread::sleep_for(std::chrono::milliseconds(60));
+			}
+			else if(rotateTowardsWall){
+				robot.setRotationSpeed(filteredRotationSpeed);
+				std::this_thread::sleep_for(std::chrono::milliseconds(60));
+			}
+			else{
+//				robot.setTranslationSpeed((int)filteredSpeed);
+//				std::this_thread::sleep_for(std::chrono::milliseconds(30));
+//				robot.setRotationSpeed(filteredRotationSpeed);
+//				std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+				robot.setArcSpeed((int)filteredSpeed, filteredSpeed/filteredRotationSpeed);
+				std::this_thread::sleep_for(std::chrono::milliseconds(60));
+			}
+
+
+			lastTranslationSpeed = filteredSpeed;
+			lastRotationSpeed = filteredRotationSpeed;
+		}
 	}
 }
 
-void MainWindow::checkColision()
-{
+double MainWindow::getRegulationError(){
+	double error = 0.0;
+	double sideDist = 0.0;
+	double sideDistLast = 0.0;
+	double sideDistNext = 0.0;
+	double sideFrontDist = 0.0;
+	double frontDist = 0.0;
+	double PID_P = 10.0;
+	double sat = 3.14;
+	double minDist = 2000.0;
+	int minDistCount = 0;
+	int sideFrontDistCount = 0;
+
+	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i){
+		if(copyOfLaserData.Data[i].scanAngle < 92.0 && copyOfLaserData.Data[i].scanAngle > 88.0){
+			sideDist = copyOfLaserData.Data[i].scanDistance + copyOfLaserData.Data[i-1].scanDistance + copyOfLaserData.Data[i+1].scanDistance;
+			sideDist = sideDist / 1000.0;
+			sideDist = sideDist / 3.0;
+			sideDistLast = copyOfLaserData.Data[i-2].scanDistance + copyOfLaserData.Data[i-3].scanDistance + copyOfLaserData.Data[i-4].scanDistance;
+			sideDistLast = sideDistLast / 1000.0;
+			sideDistLast = sideDistLast / 3.0;
+			sideDistNext = copyOfLaserData.Data[i+2].scanDistance + copyOfLaserData.Data[i+3].scanDistance + copyOfLaserData.Data[i+4].scanDistance;
+			sideDistNext = sideDistNext / 1000.0;
+			sideDistNext = sideDistNext / 3.0;
+		}
+		if(copyOfLaserData.Data[i].scanAngle < 80.0 && copyOfLaserData.Data[i].scanAngle > 55.0){
+			sideFrontDistCount++;
+			if(copyOfLaserData.Data[i].scanDistance > 0.0){
+				sideFrontDist = sideFrontDist + (copyOfLaserData.Data[i].scanDistance / 1000.0);
+			}
+			else{
+				sideFrontDist = sideFrontDist + 1.5;
+			}
+		}
+		if(copyOfLaserData.Data[i].scanAngle < 2.0 || copyOfLaserData.Data[i].scanAngle > 358.0){
+			frontDist = copyOfLaserData.Data[i].scanDistance / 1000.0;
+		}
+		if(copyOfLaserData.Data[i].scanAngle < 30.0 || copyOfLaserData.Data[i].scanAngle > 330.0){
+			if(copyOfLaserData.Data[i].scanDistance < minDist && copyOfLaserData.Data[i].scanDistance > 0.0){
+				minDist = copyOfLaserData.Data[i].scanDistance;
+				minDistCount++;
+			}
+		}
+	}
+	sideFrontDist = (double) sideFrontDist / sideFrontDistCount;
+
+	if(minDist/1000.0 < 0.4){
+		error = 1;
+	}
+	else if(sideFrontDist > 1.2){
+		error = error +( (-1) * (0.015*(sideFrontDist + 1.2)) );
+		if(error < (-0.1) ){
+			error = -0.1;
+		}
+	}
+	else if(frontDist < 1.0 && frontDist > 0.0){
+		error = error + 0.5*(1.0 - frontDist) ;
+	}
+	else if(sideDist > sideDistLast){
+		error = error + ((3) * abs(sideDist - sideDistLast));
+	}
+	else if(sideDist > sideDistNext){
+		error = error + ((3) * ( (-1) * abs(sideDist - sideDistNext) ));
+	}
+	else if(sideDist < sideDistLast && sideDist < sideDistNext){
+		error = -0.3 * (sideDist-0.4);
+	}
+
+
+
+	error = error * PID_P;
+	if(error > sat){
+		error = sat;
+	}
+	else if (error < (-1) * sat){
+		error = (-1) * sat;
+	}
+
+	return error;
+}
+
+bool MainWindow::isRotatedTowardsWall(){
+	double sideDist = 0;
+	double sideDistLast = 0;
+	double sideDistNext = 0;
+	double frontDist = 0;
+	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i){
+		if(copyOfLaserData.Data[i].scanAngle < 92 && copyOfLaserData.Data[i].scanAngle > 88){
+			sideDist = copyOfLaserData.Data[i].scanDistance + copyOfLaserData.Data[i-1].scanDistance + copyOfLaserData.Data[i+1].scanDistance;
+			sideDist = sideDist / 1000.0;
+			sideDist = sideDist / 3.0;
+			sideDistLast = copyOfLaserData.Data[i-2].scanDistance + copyOfLaserData.Data[i-3].scanDistance + copyOfLaserData.Data[i-4].scanDistance;
+			sideDistLast = sideDistLast / 1000.0;
+			sideDistLast = sideDistLast / 3.0;
+			sideDistNext = copyOfLaserData.Data[i+2].scanDistance + copyOfLaserData.Data[i+3].scanDistance + copyOfLaserData.Data[i+4].scanDistance;
+			sideDistNext = sideDistNext / 1000.0;
+			sideDistNext = sideDistNext / 3.0;
+		}
+		if(copyOfLaserData.Data[i].scanAngle < 2 || copyOfLaserData.Data[i].scanAngle > 358){
+			frontDist = copyOfLaserData.Data[i].scanDistance / 1000.0;
+		}
+
+	}
+	if(sideDist < sideDistLast && sideDist < sideDistNext && frontDist > 1.0){
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+bool MainWindow::isDistanceToWallLessThen(float dist){
+	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i){
+		if((copyOfLaserData.Data[i].scanDistance / 1000.0) < dist && (copyOfLaserData.Data[i].scanDistance > 0) && (copyOfLaserData.Data[i].scanAngle < 30 ||  copyOfLaserData.Data[i].scanAngle > 330)){
+			return true;
+		}
+	}
+	return false;
+}
+
+void MainWindow::checkColision() {
 	int count = 0;
 	for (int i = 0; i < copyOfLaserData.numberOfScans; ++i) {
 		if ((copyOfLaserData.Data[i].scanDistance / 1000.0) < COLISION_THRESHOLD && (copyOfLaserData.Data[i].scanDistance / 1000.0) > 0.0000001) {
@@ -710,26 +945,27 @@ void MainWindow::checkColision()
 void MainWindow::onStartCheckCornersTimer()
 {
 	// Start the timer
-	if (m_isInAutoMode) {
+	if(m_isInAutoMode && !wallFollow){
 		checkCornersTimer->start(3000);
 	}
 }
 
-void MainWindow::doCheckCorners()
-{
-	std::cout << m_trajectoryController->finalDistanceError() << std::endl;
-	if (!timerStarted && m_isInAutoMode && m_trajectoryController->finalDistanceError() < 0.1) {
-		checkingColision = true;
-		checkCorners = true;
-		timerStarted = true;
-		if (isInitialCornerCheck) {
-			isInitialCornerCheck = false;
+void MainWindow::doCheckCorners() {
+	if(!wallFollow && m_isInAutoMode){
+		std::cout << m_trajectoryController->finalDistanceError() << std::endl;
+		if(!timerStarted && m_isInAutoMode && m_trajectoryController->finalDistanceError() < 0.1){
+			checkingColision = true;
+			checkCorners = true;
+			timerStarted = true;
+			if(isInitialCornerCheck){
+				isInitialCornerCheck = false;
+			}
+			else{
+				visitedCornersCount++;
+			}
+			std::cout << "Check corner to be done at next stop." << std::endl;
+			checkCornersTimer->stop();
 		}
-		else {
-			visitedCornersCount++;
-		}
-		std::cout << "Check corner to be done at next stop." << std::endl;
-		checkCornersTimer->stop();
 	}
 }
 
@@ -956,10 +1192,17 @@ void MainWindow::analyseCorners(LaserMeasurement &laserData, double actual_X, do
 				std::cout << "app point: (" << thisObstacleCorner.cornerApproachPoint.x() << ", " << thisObstacleCorner.cornerApproachPoint.y() << ")" << std::endl;
 			}
 
-			obstacleCorners[cornersAvailable] = thisObstacleCorner;
+            obstacleCorners[cornersAvailable] = thisObstacleCorner;
 
-			cornersAvailable++;
-		}
+            cornersAvailable++;
+        }
+    }
+    std::cout << cornersAvailable << std::endl;
+	if(cornersAvailable == 0){
+
+		std::cout << "No more corners - Switching to wall follow" << std::endl;
+		emit positionControllerStopSignal();
+		wallFollow = true;
 	}
 	std::cout << cornersAvailable << std::endl;
 }
@@ -998,9 +1241,11 @@ void MainWindow::doFinalTransport()
 
 	if (ok1 && ok2) {
 		_calculateTrajectory(RobotTrajectoryController::MovementType::Arc);
-	}
-	m_isInAutoMode = false;
-	obstacleAvoidanceAbort();
+    }
+    m_isInAutoMode = false;
+//	emit obstalceAvoidanceAbortSignal();
+//	QThread::currentThread()->quit();
+
 }
 
 bool MainWindow::doISeeTheTarget(LaserMeasurement laserData, double angleToTarget, double distanceToTarget)

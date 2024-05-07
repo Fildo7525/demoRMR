@@ -28,7 +28,7 @@
 #define CORNER_APPROACH_GAP 0.4
 #define DISTANCE_PER_DT_STEADY_THRESHOLD 0.00003
 #define CORNER_VISITED_TOLERANCE 0.4
-#define LASER_DIFF_CORNER_THRESHOLD 0.5
+#define LASER_DIFF_CORNER_THRESHOLD 0.55
 #define MAX_CORNER_DISTANCE 3.0
 #define COLISION_THRESHOLD 0.25
 
@@ -122,6 +122,9 @@ private slots:
 	void onStartCheckCornersTimer();
 	void checkColision();
 	void obstacleAvoidanceAbort();
+	bool isDistanceToWallLessThen(float dist);
+	bool isRotatedTowardsWall();
+	double getRegulationError();
 
 public slots:
 	void setUiValues(double robotX, double robotY, double robotFi);
@@ -145,7 +148,8 @@ signals:
 	void linResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 	void arcResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 	void lidarDataReady(LaserMeasurement laserData);
-	void appendTransitionPoints(const QVector<QPointF> &points);
+	void obstalceAvoidanceAbortSignal();
+	void positionControllerStopSignal();
 
 private:
 	bool useCamera1;
@@ -210,6 +214,20 @@ private:
 	bool timerStarted;
 	bool isInitialCornerCheck;
 	bool checkingColision;
+	bool wallFollow;
+	//wallFollow
+	double lastTranslationSpeed;
+	double filteredSpeed;
+	double alpha;
+	bool commingToWall;
+	double speed;
+	double lastRotationSpeed;
+	double filteredRotationSpeed;
+	double rotationSpeed;
+	double alpha_rotation;
+	bool rotateTowardsWall;
+	int targetVisibleCount;
+	bool regulationOn;
 };
 
 #endif // MAINWINDOW_H
