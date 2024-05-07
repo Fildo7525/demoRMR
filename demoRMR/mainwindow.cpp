@@ -103,6 +103,7 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(ui->arcSubmitTargetButton, &QPushButton::clicked, this, &MainWindow::onArcSubmitButtonClicked, Qt::QueuedConnection);
     connect(ui->liveAvoidObstaclesButton, &QPushButton::clicked, this, &MainWindow::onLiveAvoidObstaclesButton_clicked, Qt::QueuedConnection);
 
+	connect(this, &MainWindow::positionControllerStopSignal, m_trajectoryController.get(), &RobotTrajectoryController::on_stoppingTimerTimeout_stop, Qt::QueuedConnection);
 //	QObject::connect(obstacleAvoidanceThread, &QThread::started, [this]() {
 //		this->obstacleAvoidanceTrajectoryHandle();
 //	});
@@ -111,6 +112,7 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(this, &MainWindow::startCheckCornersTimer, this, &MainWindow::onStartCheckCornersTimer);
 
 	connect(this, &MainWindow::obstalceAvoidanceAbortSignal, this, &MainWindow::obstacleAvoidanceAbort);
+
 
 	// Starting threads
 	m_controllerThread->start();
@@ -1187,7 +1189,7 @@ void MainWindow::analyseCorners(LaserMeasurement& laserData, double actual_X, do
 	if(cornersAvailable == 0){
 
 		std::cout << "No more corners - Switching to wall follow" << std::endl;
-		robot.setTranslationSpeed(0);
+		emit positionControllerStopSignal();
 		wallFollow = true;
 	}
 

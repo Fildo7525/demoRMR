@@ -147,6 +147,7 @@ signals:
 	void arcResultsReady(double distance, double rotaiton, QVector<QPointF> points);
 	void lidarDataReady(LaserMeasurement laserData);
 	void obstalceAvoidanceAbortSignal();
+	void positionControllerStopSignal();
 
 private:
 	bool useCamera1;
