@@ -188,6 +188,10 @@ int MainWindow::processThisLidar(LaserMeasurement laserData)
 	updateLaserPicture = 1;
 	update(); //tento prikaz prinuti prekreslit obrazovku.. zavola sa paintEvent funkcia
 
+	if (!m_particleFilter->isInitialized()) {
+		m_particleFilter->setLastLaserData(copyOfLaserData);
+	}
+
 	// qDebug() << "m_x: " << m_x << " m_y: " << m_y << " m_fi: " << m_fi;
 	emit lidarDataReady(copyOfLaserData);
 	return 0;
@@ -282,17 +286,27 @@ void MainWindow::calculateOdometry(const TKobukiData &robotdata)
 	lastRightEncoder = robotdata.EncoderRight;
 
 	double l = (rightEncDist + leftEncDist) / 2.0;
-	{
-		m_fi = robotdata.GyroAngle / 100. * TO_RADIANS - m_fiCorrection;
-		m_x = m_x + l * std::cos(m_fi);
-		m_y = m_y + l * std::sin(m_fi);
+	double fi = robotdata.GyroAngle / 100. * TO_RADIANS - m_fiCorrection;
+	double x = m_x + l * std::cos(m_fi);
+	double y = m_y + l * std::sin(m_fi);
 
-		if (!m_robotStartupLocation && datacounter % 5) {
-			m_x = 0;
-			m_y = 0;
-			m_fiCorrection = m_fi;
-			m_robotStartupLocation = true;
-		}
+	auto pos = m_particleFilter->update({x, y, fi}, copyOfLaserData);
+	x = pos.x;
+	y = pos.y;
+	fi = pos.rotation;
+
+	{
+		std::scoped_lock lock(m_mutex);
+		m_x = x;
+		m_y = y;
+		m_fi = fi;
+	}
+
+	if (!m_robotStartupLocation && datacounter % 5) {
+		m_x = 0;
+		m_y = 0;
+		m_fiCorrection = m_fi;
+		m_robotStartupLocation = true;
 	}
 	distancePerDT = abs(rightEncDist) + abs(leftEncDist);
 }
@@ -444,6 +458,7 @@ void MainWindow::on_pushButton_9_clicked() //start button
 
 	///ked je vsetko nasetovane tak to tento prikaz spusti (ak nieco nieje setnute,tak to normalne nenastavi.cize ak napr nechcete kameru,vklude vsetky info o nej vymazte)
 	robot.robotStart();
+	m_particleFilter = new ParticleFilter(this, {m_x, m_y, m_fi});
 }
 
 void MainWindow::on_pushButton_2_clicked() //forward

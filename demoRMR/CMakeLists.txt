@@ -15,6 +15,8 @@ find_package(SDL REQUIRED)
 
 add_subdirectory(robot)
 add_subdirectory(QJoysticks-master)
+add_subdirectory(kd-tree)
+
 add_definitions(-DMAP_PATH="${CMAKE_CURRENT_SOURCE_DIR}/map.txt")
 
 set(HEADERS
@@ -23,6 +25,7 @@ set(HEADERS
 	robotTrajectoryController.h
 	lidarMapper.h
 	floodPlanner.h
+	ParticleFilter.h
 )
 
 set(SOURCES
@@ -32,6 +35,7 @@ set(SOURCES
 	robotTrajectoryController.cpp
 	lidarMapper.cpp
 	floodPlanner.cpp
+	ParticleFilter.cpp
 )
 
 set(UI
@@ -53,5 +57,6 @@ PUBLIC
 	${OpenCV_LIBS}
 	robot
 	qjoysticks
+	kdtree
 )
 

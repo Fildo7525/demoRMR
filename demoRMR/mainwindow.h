@@ -1,6 +1,8 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "CKobuki.h"
+#include "ParticleFilter.h"
 #include "floodPlanner.h"
 #include <QMainWindow>
 #include <QTimer>
@@ -229,6 +231,7 @@ private:
 	bool rotateTowardsWall;
 	int targetVisibleCount;
 	bool regulationOn;
+	ParticleFilter *m_particleFilter;
 };
 
 #endif // MAINWINDOW_H
