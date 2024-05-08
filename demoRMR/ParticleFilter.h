@@ -13,6 +13,12 @@ struct Position
 	double rotation;
 };
 
+/**
+ * @class ParticleFilter
+ * @brief Class based on a QObject. Filter of position calculated by odometry based on the lidar data.
+ *
+ * TODO: Export some parameters of the filter as parameters. Thus, the filter can be tuned by the user.
+ */
 class ParticleFilter
 	: public QObject
 {
@@ -27,8 +33,22 @@ public:
 	 */
 	explicit ParticleFilter(QObject *parent, const Position &position);
 
+	/**
+	 * @brief Initialize the ParticleFilter with the last lidar data.
+	 *
+	 * @param laserData LaserMeasurement data from the lidar.
+	 */
 	void setLastLaserData(const LaserMeasurement &laserData) { m_lastLidarCartesianData = lidarDataToCartesian(laserData); }
 
+	/**
+	 * @brief Check if the ParticleFilter is initialized.
+	 *
+	 * Being initialized means that the last lidar data is not empty.
+	 *
+	 * @see setLastLaserData If this function is called with non empty data, the ParticleFilter is initialized.
+	 *
+	 * @return True if the ParticleFilter is initialized, false otherwise.
+	 */
 	bool isInitialized() const { return !m_lastLidarCartesianData.empty(); }
 
 	/**
@@ -41,6 +61,16 @@ public:
 	Position update(const Position &position, const LaserMeasurement &laserData);
 
 signals:
+	/**
+	 * @brief Singal emitted when the particles are ready.
+	 *
+	 * This signal is just for debugging purposes. If anybody wants
+	 * to see the generated particles, just connect a slot to this signal.
+	 *
+	 * @see resample Function that generates the particles.
+	 *
+	 * @param particles Vector of particles. It's size is determined by the resample function.
+	 */
 	void particlesReady(const QVector<Position> &particles);
 
 private:
@@ -75,6 +105,12 @@ private:
 	 */
 	double errorFromLidarData(const QVector<QPointF> &newLidarData, const QVector<QPointF> &oldLidarData, double allowedError = 0.01);
 
+	/**
+	 * @brief Move the last lidar data from the last position to the position of the @a particle.
+	 *
+	 * @param laserData Lidar data from the last scan.
+	 * @param particle Position to which the lidar data should be moved.
+	 */
 	QVector<QPointF> transformLidarData(const QVector<QPointF> &laserData, const Position &particle);
 
 private:
