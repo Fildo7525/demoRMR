@@ -264,9 +264,9 @@ QJoystickPOVEvent SDL_Joysticks::getPOVEvent(const SDL_Event *sdl_event)
 {
 	QJoystickPOVEvent event;
 
-	if (!m_joysticks.contains(sdl_event->jdevice.which)) {
-		return event;
-	}
+//	if (!m_joysticks.contains(sdl_event->jdevice.which)) {
+//		return event;
+//	}
 
 #ifdef SDL_SUPPORTED
 	event.pov = sdl_event->jhat.hat;
@@ -316,9 +316,9 @@ QJoystickAxisEvent SDL_Joysticks::getAxisEvent(const SDL_Event *sdl_event)
 {
 	QJoystickAxisEvent event;
 
-	if (!m_joysticks.contains(sdl_event->cdevice.which)) {
-		return event;
-	}
+//	if (!m_joysticks.contains(sdl_event->cdevice.which)) {
+//		return event;
+//	}
 
 #ifdef SDL_SUPPORTED
 	event.axis = sdl_event->caxis.axis;
@@ -339,9 +339,9 @@ QJoystickButtonEvent SDL_Joysticks::getButtonEvent(const SDL_Event *sdl_event)
 {
 	QJoystickButtonEvent event;
 
-	if (!m_joysticks.contains(sdl_event->jdevice.which)) {
-		return event;
-	}
+//	if (!m_joysticks.contains(sdl_event->jdevice.which)) {
+//		return event;
+//	}
 
 #ifdef SDL_SUPPORTED
 	event.button = sdl_event->jbutton.button;
