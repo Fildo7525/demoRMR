@@ -120,7 +120,7 @@ double ParticleFilter::errorFromLidarData(const QVector<QPointF> &newLidarData, 
 
 	acceptablePoints = std::max(acceptablePoints, 1);
 
-	qDebug() << "Full error: " << error << " Acceptable points: " << acceptablePoints << " Average error: " << error / acceptablePoints;
+	// qDebug() << "Full error: " << error << " Acceptable points: " << acceptablePoints << " Average error: " << error / acceptablePoints;
 	return error / acceptablePoints;
 }
 
