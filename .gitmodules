@@ -1,0 +1,3 @@
+[submodule "demoRMR/kd-tree"]
+	path = demoRMR/kd-tree
+	url = git@github.com:gishi523/kd-tree.git
