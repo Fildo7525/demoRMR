@@ -59,13 +59,13 @@ Position ParticleFilter::update(const Position &position, const LaserMeasurement
 	return newPosition;
 }
 
-QVector<Position> ParticleFilter::resample(const Position &position, double std, int count)
+QVector<Position> ParticleFilter::resample(const Position &position, int count)
 {
 	// values near the mean are the most likely
 	// standard deviation affects the dispersion of generated values from the mean
-	std::normal_distribution xDist{0., (position.x - m_lastPosition.x) * cos(position.rotation)};
-	std::normal_distribution yDist{0., (position.y - m_lastPosition.y) * sin(position.rotation)};
-	std::normal_distribution rotDist{0., 0.01};
+	std::normal_distribution xDist{0., std::abs(position.x - m_lastPosition.x) * cos(position.rotation)};
+	std::normal_distribution yDist{0., std::abs(position.y - m_lastPosition.y) * sin(position.rotation)};
+	std::normal_distribution rotDist{0., DEG2RAD(5)};
 
 	// qDebug() << "resampling particles";
 	// draw a sample from the normal distribution and round it to an integer
@@ -103,7 +103,7 @@ QVector<QPointF> ParticleFilter::lidarDataToCartesian(const LaserMeasurement &la
 	return output;
 }
 
-double ParticleFilter::errorFromLidarData(const QVector<QPointF> &newLidarData, const QVector<QPointF> &oldLidarData)
+double ParticleFilter::errorFromLidarData(const QVector<QPointF> &newLidarData, const QVector<QPointF> &oldLidarData, double allowedError)
 {
 	double error = 0.0;
 	int acceptablePoints = 0;
@@ -112,7 +112,7 @@ double ParticleFilter::errorFromLidarData(const QVector<QPointF> &newLidarData, 
 		int idx = m_tree.nnSearch(MyPoint(oldLidarData[i]));
 		auto tmp = (newLidarData[idx] - oldLidarData[i]).manhattanLength();
 		// qDebug() << "Error: " << tmp;
-		if (tmp < 0.01) {
+		if (tmp < allowedError) {
 			error += tmp;
 			acceptablePoints++;
 		}

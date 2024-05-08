@@ -50,11 +50,10 @@ private:
 	 * The distribution of the particles is based on the normal distribution with mean and standard deviation.
 	 *
 	 * @param position Current position of the robot.
-	 * @param std Standard deviation of the normal distribution.
 	 * @param count Number of particles to be created.
 	 * @return Vector of particles.
 	 */
-	QVector<Position> resample(const Position &position, double std, int count = 20);
+	QVector<Position> resample(const Position &position, int count = 20);
 
 	/**
 	 * @brief Transforms the laser data from the polar representation to the Cartesian representation.
@@ -71,9 +70,10 @@ private:
 	 *
 	 * @param newLidarData Data from the current scan.
 	 * @param oldLidarData Data from the previous scan.
+	 * @param allowedError Allowed error in the Cartesian coordinates.
 	 * @return Error in Cartesian coordinates.
 	 */
-	double errorFromLidarData(const QVector<QPointF> &newLidarData, const QVector<QPointF> &oldLidarData);
+	double errorFromLidarData(const QVector<QPointF> &newLidarData, const QVector<QPointF> &oldLidarData, double allowedError = 0.01);
 
 	QVector<QPointF> transformLidarData(const QVector<QPointF> &laserData, const Position &particle);
 
