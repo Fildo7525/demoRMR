@@ -21,6 +21,51 @@ Ako vypliva z tohoto postupu, cim blizsie sme ku koncovemu bodu tym pomalsie sa 
 dostaneme. Aby sme zahrnuli aj nejaku tu nepresnost zapocitali sme aj toleranciu na 5cm. Tym padom sa robot zastavi v okoli ciela. Tento sposob vie zabezpecit
 ze sa dozastavime v okoli ciela aj keby nastal nejaky neziadany presmyk alebo ina neziaduca chyba.
 
+# Zadanie 2
+#### Blokový diagram algoritmu
+
+![Untitled Diagram drawio (2)](https://github.com/Fildo7525/demoRMR/assets/75572905/14aaabac-6e0e-4684-8889-ce1022f3035a)
+
+#### Do i see target
+
+Slúži na overenie prítomnosti spojnice medzi aktuálnou pozíciou robota a cieľom trajektórie. Overenie spočíva v porovnaní vypočítanej vzdialenosti medzi robotom a cieľovým bodom a vzdialenosti z lidaru prislúchajúcej uhlu, na ktorom sa cieľový bod nachádza.
+
+#### Analyse corners
+
+Nájde všetky rohy v okolí robota, vypočíta ich dôležité parametre (pozícia, susedné body, príjazdový bod, prejazdový bod, dĺžka potenciálnej cesty cez nájdený bod k cieľu,...). Roh musí spĺňať nasledujúce podmienky:
+1. Možno bod identifikovať ako "vzdialenostnú dieru" (náhla zmena vzdialenosti dvoch po sebe idúcich prvkov z dát z lidaru).
+2. Celková cesta k cieľu cez nájdený bod musí byť dlhšia ako 0.3 metra.
+3. Prejazdový bod nesmie byť v okolí aktuálnej pozície robota.
+4. Prejazdový bod sa nesmie nachádzať v zozname už navštívených rohov.
+5. Vzdialenosť prejazdového bodu od cieľového bodu nesmie byť dlhšia ako vzdialenosť aktuálnej pozície robota a cieľového bodu.
+
+#### Pick best corner
+
+Vyberie bod s najkratšou trasou k cieľu a spustí presun najprv na príjazdový bod rohu (approach point) nasledovaný presunom na prejazdový bod (bypass point) rohu. Táto sekvencia zabezpečí obídenie akejkoľvek horizontálnej / vertikálnej prekážky.
+
+#### Near wall?
+
+Overí, či je robot vo vzdialenosti od steny v smere cieľa menšej alebo rovnej ako je požadovaná vzdialenosť robota a steny počas jej sledovania.
+
+#### Go to wall
+
+Transport robota k stene na požadovanú vzdialenosť a jeho následné natočenie tak, aby jeho orientácia bola rovnobežne so sledovanou stenou.
+
+#### Get regulation error
+
+Funkcia slúžiaca na analýzu priestoru v okolí robota za účelom sledovania steny. Regulačná odchýlka je vhodnou charakteristikou počítaná pre zabezpečenie dynamiky natáčania sa k stene. Do hodnoty regulačnej odchýlky prispieva:
+1. Detekovaná možná kolízia (veľmi nízka vzdialenosť z lidaru v rozmedzí 60° v smere robota)
+2. Detekovaný pravotočivý roh steny (veľká hodnota vzdialenosti z lidaru v rozmedzí 55° až 80° natočenia robota)
+3. Detekovaný lavotočivý roh steny (nízka hodnota vzdialenosť z lidaru v rozmedzí 4° v smere robota)
+4. Detekované natočenie robota voči stene iné, ako 90 stupňov.
+5. Detekovaný rozdiel medzi žiadanou a reálnou vzdialenosťou medzi robotom a stenou.
+
+Priorita jednotlivých zložiek regulačnej odchýlky je priradená na základe poradia jednotlivých elementov (kolízia-roh do prava-roh do ľava-natočenie k stene-korekcia vzdialenosti od steny).
+
+#### Apply P-parameter
+
+Vynásobenie regulačnej odchýlky konštantou P pre doladenie dynamiky systému (P-regulátor).
+
 # Zadanie 3
 
 Pri zadani 3 bolo nasou ulohou mapovat prostredie, po ktorom sa robot pohybuje. Toto mapovanie sme realizovali pomocou rplidaru. Ten poskytuje data v podobe
